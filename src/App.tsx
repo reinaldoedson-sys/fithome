@@ -17,20 +17,49 @@ import { ExerciseLibrary } from './components/ExerciseLibrary';
 import { WorkoutRoutines } from './components/WorkoutRoutines';
 import { WorkoutHistory } from './components/WorkoutHistory';
 import { ActiveWorkoutModal } from './components/ActiveWorkoutModal';
+import { auth, loginWithGoogle, logoutUser } from './lib/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import {
+  syncUserProfile,
+  subscribeUserWorkouts,
+  saveUserWorkoutToFirestore,
+  deleteUserWorkoutFromFirestore,
+  subscribeUserWeights,
+  saveUserWeightToFirestore,
+  deleteUserWeightFromFirestore,
+  subscribeUserMeasurements,
+  saveUserMeasurementToFirestore,
+  deleteUserMeasurementFromFirestore,
+  subscribeUserGoal,
+  saveUserGoalToFirestore,
+  subscribeUserRecords,
+  saveUserRecordToFirestore
+} from './lib/firestoreService';
 import {
   Home,
-  Dumbbell,
   BookOpen,
   Calendar,
   Layers,
   Plus,
-  Scale
+  Scale,
+  Cloud,
+  CheckCircle2,
+  LogOut,
+  LogIn,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<
     'progresso' | 'evolucao' | 'exercicios' | 'rotinas' | 'historico'
   >('progresso');
+
+  // Firebase Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [syncToast, setSyncToast] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Persistence for user workouts
   const [sessions, setSessions] = useState<WorkoutSession[]>(() => {
@@ -103,7 +132,7 @@ export default function App() {
     return [];
   });
 
-  // LocalStorage synchronization effects
+  // LocalStorage synchronization effects (offline cache)
   useEffect(() => {
     try {
       localStorage.setItem('fithome_user_sessions', JSON.stringify(sessions));
@@ -151,6 +180,122 @@ export default function App() {
       // ignore
     }
   }, [bodyPhotos]);
+
+  // Firebase Realtime Subscriptions
+  useEffect(() => {
+    let unsubs: (() => void)[] = [];
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async currentUser => {
+      setUser(currentUser);
+      setIsAuthLoading(false);
+
+      // Clean up previous listeners
+      unsubs.forEach(fn => fn());
+      unsubs = [];
+
+      if (currentUser) {
+        // Sync user profile in Firestore
+        syncUserProfile(currentUser).catch(err => console.error('Profile sync error:', err));
+
+        // Subscribe to live workouts
+        const unsubWorkouts = subscribeUserWorkouts(currentUser.uid, remoteWorkouts => {
+          if (remoteWorkouts && remoteWorkouts.length > 0) {
+            setSessions(remoteWorkouts);
+          } else {
+            // Upload current local workouts if remote is empty
+            setSessions(local => {
+              if (local.length > 0) {
+                local.forEach(s => saveUserWorkoutToFirestore(currentUser.uid, s));
+              }
+              return local;
+            });
+          }
+        });
+        unsubs.push(unsubWorkouts);
+
+        // Subscribe to live weights
+        const unsubWeights = subscribeUserWeights(currentUser.uid, remoteWeights => {
+          if (remoteWeights && remoteWeights.length > 0) {
+            setBodyWeights(remoteWeights);
+          } else {
+            setBodyWeights(local => {
+              if (local.length > 0) {
+                local.forEach(w => saveUserWeightToFirestore(currentUser.uid, w));
+              }
+              return local;
+            });
+          }
+        });
+        unsubs.push(unsubWeights);
+
+        // Subscribe to live measurements
+        const unsubMeasurements = subscribeUserMeasurements(currentUser.uid, remoteMeasures => {
+          if (remoteMeasures && remoteMeasures.length > 0) {
+            setBodyMeasurements(remoteMeasures);
+          } else {
+            setBodyMeasurements(local => {
+              if (local.length > 0) {
+                local.forEach(m => saveUserMeasurementToFirestore(currentUser.uid, m));
+              }
+              return local;
+            });
+          }
+        });
+        unsubs.push(unsubMeasurements);
+
+        // Subscribe to live body goal
+        const unsubGoal = subscribeUserGoal(currentUser.uid, remoteGoal => {
+          if (remoteGoal && (remoteGoal.targetWeightKg || remoteGoal.customInitialWeightKg)) {
+            setBodyGoal(remoteGoal);
+          }
+        });
+        unsubs.push(unsubGoal);
+
+        // Subscribe to live PRs
+        const unsubRecords = subscribeUserRecords(currentUser.uid, remoteRecords => {
+          if (remoteRecords && remoteRecords.length > 0) {
+            setPersonalRecords(remoteRecords);
+          } else {
+            setPersonalRecords(local => {
+              if (local.length > 0) {
+                local.forEach(r => saveUserRecordToFirestore(currentUser.uid, r));
+              }
+              return local;
+            });
+          }
+        });
+        unsubs.push(unsubRecords);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubs.forEach(fn => fn());
+    };
+  }, []);
+
+  const handleLogin = async () => {
+    setAuthError(null);
+    try {
+      await loginWithGoogle();
+      setSyncToast('Conectado ao Firebase com sucesso! Dados sincronizados na nuvem.');
+      setTimeout(() => setSyncToast(null), 4000);
+    } catch (err: unknown) {
+      console.error(err);
+      setAuthError('Não foi possível conectar com o Google no momento.');
+      setTimeout(() => setAuthError(null), 4000);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setSyncToast('Desconectado do Firebase. Dados salvos localmente.');
+      setTimeout(() => setSyncToast(null), 4000);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
 
   // Active workout state
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -219,15 +364,29 @@ export default function App() {
       });
     }
 
+    // Sync to Firestore if authenticated
+    if (user) {
+      saveUserWorkoutToFirestore(user.uid, newSession);
+      newRecords.forEach(nr => {
+        saveUserRecordToFirestore(user.uid, nr);
+      });
+    }
+
     setIsWorkoutActive(false);
     setActiveTab('progresso');
   };
 
   const handleDeleteSession = (sessionId: string) => {
     setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (user) {
+      deleteUserWorkoutFromFirestore(user.uid, sessionId);
+    }
   };
 
   const handleClearHistory = () => {
+    sessions.forEach(s => {
+      if (user) deleteUserWorkoutFromFirestore(user.uid, s.id);
+    });
     setSessions([]);
     setPersonalRecords([]);
     try {
@@ -244,13 +403,19 @@ export default function App() {
     existingId?: string
   ) => {
     if (existingId) {
+      let updatedEntry: WeightEntry | null = null;
       setBodyWeights(prev =>
-        prev.map(item =>
-          item.id === existingId
-            ? { ...item, ...entryData }
-            : item
-        )
+        prev.map(item => {
+          if (item.id === existingId) {
+            updatedEntry = { ...item, ...entryData };
+            return updatedEntry;
+          }
+          return item;
+        })
       );
+      if (user && updatedEntry) {
+        saveUserWeightToFirestore(user.uid, updatedEntry);
+      }
     } else {
       const newEntry: WeightEntry = {
         id: `weight-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -258,11 +423,17 @@ export default function App() {
         createdAt: new Date().toISOString()
       };
       setBodyWeights(prev => [...prev, newEntry]);
+      if (user) {
+        saveUserWeightToFirestore(user.uid, newEntry);
+      }
     }
   };
 
   const handleDeleteWeight = (id: string) => {
     setBodyWeights(prev => prev.filter(item => item.id !== id));
+    if (user) {
+      deleteUserWeightFromFirestore(user.uid, id);
+    }
   };
 
   const handleSaveMeasurement = (
@@ -270,13 +441,19 @@ export default function App() {
     existingId?: string
   ) => {
     if (existingId) {
+      let updatedEntry: MeasurementEntry | null = null;
       setBodyMeasurements(prev =>
-        prev.map(item =>
-          item.id === existingId
-            ? { ...item, ...entryData }
-            : item
-        )
+        prev.map(item => {
+          if (item.id === existingId) {
+            updatedEntry = { ...item, ...entryData };
+            return updatedEntry;
+          }
+          return item;
+        })
       );
+      if (user && updatedEntry) {
+        saveUserMeasurementToFirestore(user.uid, updatedEntry);
+      }
     } else {
       const newEntry: MeasurementEntry = {
         id: `measure-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -284,15 +461,24 @@ export default function App() {
         createdAt: new Date().toISOString()
       };
       setBodyMeasurements(prev => [...prev, newEntry]);
+      if (user) {
+        saveUserMeasurementToFirestore(user.uid, newEntry);
+      }
     }
   };
 
   const handleDeleteMeasurement = (id: string) => {
     setBodyMeasurements(prev => prev.filter(item => item.id !== id));
+    if (user) {
+      deleteUserMeasurementFromFirestore(user.uid, id);
+    }
   };
 
   const handleSaveGoal = (updatedGoal: BodyGoal) => {
     setBodyGoal(updatedGoal);
+    if (user) {
+      saveUserGoalToFirestore(user.uid, updatedGoal);
+    }
   };
 
   const handleSavePhoto = (photoData: Omit<ProgressPhoto, 'id' | 'createdAt'>) => {
@@ -337,18 +523,33 @@ export default function App() {
         const parsed = JSON.parse(e.target?.result as string);
         if (Array.isArray(parsed.sessions)) {
           setSessions(parsed.sessions);
+          if (user) {
+            parsed.sessions.forEach((s: WorkoutSession) => saveUserWorkoutToFirestore(user.uid, s));
+          }
         }
         if (Array.isArray(parsed.personalRecords)) {
           setPersonalRecords(parsed.personalRecords);
+          if (user) {
+            parsed.personalRecords.forEach((r: PersonalRecord) => saveUserRecordToFirestore(user.uid, r));
+          }
         }
         if (Array.isArray(parsed.bodyWeights)) {
           setBodyWeights(parsed.bodyWeights);
+          if (user) {
+            parsed.bodyWeights.forEach((w: WeightEntry) => saveUserWeightToFirestore(user.uid, w));
+          }
         }
         if (Array.isArray(parsed.bodyMeasurements)) {
           setBodyMeasurements(parsed.bodyMeasurements);
+          if (user) {
+            parsed.bodyMeasurements.forEach((m: MeasurementEntry) => saveUserMeasurementToFirestore(user.uid, m));
+          }
         }
         if (parsed.bodyGoal && typeof parsed.bodyGoal === 'object') {
           setBodyGoal(parsed.bodyGoal);
+          if (user) {
+            saveUserGoalToFirestore(user.uid, parsed.bodyGoal);
+          }
         }
       } catch {
         // ignore format error
@@ -359,17 +560,37 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      {/* Top Notification Toasts */}
+      {syncToast && (
+        <div className="fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 text-xs sm:text-sm rounded-xl shadow-xl backdrop-blur-md animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{syncToast}</span>
+        </div>
+      )}
+
+      {authError && (
+        <div className="fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-rose-950/90 border border-rose-500/40 text-rose-200 text-xs sm:text-sm rounded-xl shadow-xl backdrop-blur-md animate-fade-in">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <span>{authError}</span>
+        </div>
+      )}
+
       {/* Top Bar Navigation (3 Zones) */}
       <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 sm:gap-6">
           {/* Zone 1: Wordmark */}
           <div className="flex items-center gap-2.5 whitespace-nowrap shrink-0">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
               <Home className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <span className="text-lg font-extrabold tracking-tight text-slate-100 font-display">
-              FitHome
-            </span>
+            <div className="flex flex-col">
+              <span className="text-lg font-extrabold tracking-tight text-slate-100 font-display leading-tight">
+                FitHome
+              </span>
+              <span className="text-[10px] text-slate-500 hidden sm:inline -mt-0.5">
+                Treinos em Casa
+              </span>
+            </div>
           </div>
 
           {/* Zone 2: Navigation Links */}
@@ -431,15 +652,69 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Zone 3: Primary CTA */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Zone 3: Cloud Sync + Primary CTA */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Firebase Auth / Cloud Status */}
+            {isAuthLoading ? (
+              <div className="p-2 text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+            ) : user ? (
+              <div className="flex items-center gap-2 pl-2 pr-1.5 py-1 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-300">
+                <div className="flex items-center gap-1.5">
+                  <div className="relative">
+                    {user.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt={user.displayName || 'Avatar'}
+                        className="w-5 h-5 rounded-full object-cover border border-emerald-500/50"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">
+                        {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950" />
+                  </div>
+                  <span className="hidden xl:inline text-xs text-slate-300 max-w-[100px] truncate">
+                    {user.displayName?.split(' ')[0] || 'Atleta'}
+                  </span>
+                  <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Nuvem Ativa</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Desconectar do Firebase"
+                  className="p-1 hover:text-rose-400 text-slate-500 rounded-md transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLogin}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition-all shadow-sm active:scale-95"
+                title="Sincronizar seus dados na nuvem com Firebase"
+              >
+                <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Conectar Nuvem</span>
+                <span className="sm:hidden">Entrar</span>
+              </button>
+            )}
+
+            {/* Primary Action Button */}
             <button
               type="button"
               onClick={handleStartCustomWorkout}
-              className="px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5"
+              className="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Iniciar Treino em Casa</span>
+              <span className="hidden sm:inline">Iniciar Treino em Casa</span>
+              <span className="sm:hidden">Treinar</span>
             </button>
           </div>
         </div>

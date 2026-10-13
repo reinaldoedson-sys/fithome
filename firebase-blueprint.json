@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil do usuário autenticado no FitHome",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email"]
+    },
+    "WorkoutSession": {
+      "title": "WorkoutSession",
+      "description": "Sessão de treino registrada pelo usuário",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "durationSeconds": { "type": "number" },
+        "exercises": { "type": "array" },
+        "totalVolumeKg": { "type": "number" },
+        "totalSets": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "startTime", "durationSeconds", "totalSets"]
+    },
+    "WeightEntry": {
+      "title": "WeightEntry",
+      "description": "Registro de pesagem corporal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "weightKg": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "date", "weightKg"]
+    },
+    "MeasurementEntry": {
+      "title": "MeasurementEntry",
+      "description": "Registro de medidas corporais em centímetros",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "measurements": { "type": "object" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "date", "measurements"]
+    },
+    "BodyGoal": {
+      "title": "BodyGoal",
+      "description": "Metas pessoais corporais do usuário",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "targetWeightKg": { "type": "number" },
+        "targetDate": { "type": "string" },
+        "customInitialWeightKg": { "type": "number" },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId"]
+    },
+    "PersonalRecord": {
+      "title": "PersonalRecord",
+      "description": "Recordes pessoais de exercícios em casa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "exerciseId": { "type": "string" },
+        "exerciseName": { "type": "string" },
+        "maxScore": { "type": "number" },
+        "metricLabel": { "type": "string" },
+        "achievedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "exerciseId", "maxScore", "metricLabel"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Documento de perfil e configurações do usuário"
+    },
+    "/users/{userId}/workouts/{workoutId}": {
+      "schema": "WorkoutSession",
+      "description": "Sessões de treino do usuário"
+    },
+    "/users/{userId}/weights/{weightId}": {
+      "schema": "WeightEntry",
+      "description": "Histórico de pesagem do usuário"
+    },
+    "/users/{userId}/measurements/{measurementId}": {
+      "schema": "MeasurementEntry",
+      "description": "Histórico de medidas corporais do usuário"
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": "BodyGoal",
+      "description": "Metas de peso e corpo do usuário"
+    },
+    "/users/{userId}/records/{recordId}": {
+      "schema": "PersonalRecord",
+      "description": "Recordes pessoais do usuário"
+    }
+  }
+}
