@@ -1,0 +1,6 @@
+{
+  "name": "FitHome - Treino em Casa & Progresso Semanal",
+  "description": "App estilo workout-cool focado em treinos em casa (com peso corporal, cadeira, mochila e elásticos), mapa muscular interativo, registro de séries e acompanhamento semanal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
