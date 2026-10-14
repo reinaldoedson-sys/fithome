@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   WorkoutSession,
   PersonalRecord,
@@ -50,6 +50,22 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+// Helper to scope localStorage by user ID or 'guest'
+function getStorageKey(key: string, uid?: string | null): string {
+  return uid ? `fithome_user_${uid}_${key}` : `fithome_guest_${key}`;
+}
+
+function loadInitial<T>(key: string, fallback: T): T {
+  try {
+    // Try current guest key or legacy key
+    const saved = localStorage.getItem(`fithome_guest_${key}`) || localStorage.getItem(`fithome_${key}`);
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // fallback
+  }
+  return fallback;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<
     'progresso' | 'evolucao' | 'exercicios' | 'rotinas' | 'historico'
@@ -61,131 +77,100 @@ export default function App() {
   const [syncToast, setSyncToast] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Persistence for user workouts
-  const [sessions, setSessions] = useState<WorkoutSession[]>(() => {
-    try {
-      localStorage.removeItem('fithome_workouts_v1');
-      localStorage.removeItem('fithome_prs_v1');
-      localStorage.removeItem('fitpulse_workouts_v1');
-      localStorage.removeItem('fitpulse_prs_v1');
+  // Reference to hold current user ID across callbacks
+  const currentUserIdRef = useRef<string | null>(null);
 
-      const saved = localStorage.getItem('fithome_user_sessions');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // State for user workouts
+  const [sessions, setSessions] = useState<WorkoutSession[]>(() =>
+    loadInitial('user_sessions', [])
+  );
 
-  // Persistence for user PRs
-  const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>(() => {
-    try {
-      const saved = localStorage.getItem('fithome_user_prs');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // State for user PRs
+  const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>(() =>
+    loadInitial('user_prs', [])
+  );
 
-  // Persistence for Body Evolution: Weights
-  const [bodyWeights, setBodyWeights] = useState<WeightEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('fithome_body_weights_v1');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // State for Body Evolution: Weights
+  const [bodyWeights, setBodyWeights] = useState<WeightEntry[]>(() =>
+    loadInitial('body_weights_v1', [])
+  );
 
-  // Persistence for Body Evolution: Measurements
-  const [bodyMeasurements, setBodyMeasurements] = useState<MeasurementEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('fithome_body_measurements_v1');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // State for Body Evolution: Measurements
+  const [bodyMeasurements, setBodyMeasurements] = useState<MeasurementEntry[]>(() =>
+    loadInitial('body_measurements_v1', [])
+  );
 
-  // Persistence for Body Evolution: Goals
-  const [bodyGoal, setBodyGoal] = useState<BodyGoal>(() => {
-    try {
-      const saved = localStorage.getItem('fithome_body_goal_v1');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return {};
-  });
+  // State for Body Evolution: Goals
+  const [bodyGoal, setBodyGoal] = useState<BodyGoal>(() =>
+    loadInitial('body_goal_v1', {})
+  );
 
-  // Persistence for Body Evolution: Photos
-  const [bodyPhotos, setBodyPhotos] = useState<ProgressPhoto[]>(() => {
-    try {
-      const saved = localStorage.getItem('fithome_body_photos_v1');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // State for Body Evolution: Photos
+  const [bodyPhotos, setBodyPhotos] = useState<ProgressPhoto[]>(() =>
+    loadInitial('body_photos_v1', [])
+  );
 
-  // LocalStorage synchronization effects (offline cache)
+  // LocalStorage synchronization effects (user-isolated offline cache)
   useEffect(() => {
     try {
-      localStorage.setItem('fithome_user_sessions', JSON.stringify(sessions));
+      const key = getStorageKey('user_sessions', user?.uid);
+      localStorage.setItem(key, JSON.stringify(sessions));
     } catch {
       // ignore
     }
-  }, [sessions]);
+  }, [sessions, user?.uid]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('fithome_user_prs', JSON.stringify(personalRecords));
+      const key = getStorageKey('user_prs', user?.uid);
+      localStorage.setItem(key, JSON.stringify(personalRecords));
     } catch {
       // ignore
     }
-  }, [personalRecords]);
+  }, [personalRecords, user?.uid]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('fithome_body_weights_v1', JSON.stringify(bodyWeights));
+      const key = getStorageKey('body_weights_v1', user?.uid);
+      localStorage.setItem(key, JSON.stringify(bodyWeights));
     } catch {
       // ignore
     }
-  }, [bodyWeights]);
+  }, [bodyWeights, user?.uid]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('fithome_body_measurements_v1', JSON.stringify(bodyMeasurements));
+      const key = getStorageKey('body_measurements_v1', user?.uid);
+      localStorage.setItem(key, JSON.stringify(bodyMeasurements));
     } catch {
       // ignore
     }
-  }, [bodyMeasurements]);
+  }, [bodyMeasurements, user?.uid]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('fithome_body_goal_v1', JSON.stringify(bodyGoal));
+      const key = getStorageKey('body_goal_v1', user?.uid);
+      localStorage.setItem(key, JSON.stringify(bodyGoal));
     } catch {
       // ignore
     }
-  }, [bodyGoal]);
+  }, [bodyGoal, user?.uid]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('fithome_body_photos_v1', JSON.stringify(bodyPhotos));
+      const key = getStorageKey('body_photos_v1', user?.uid);
+      localStorage.setItem(key, JSON.stringify(bodyPhotos));
     } catch {
       // ignore
     }
-  }, [bodyPhotos]);
+  }, [bodyPhotos, user?.uid]);
 
-  // Firebase Realtime Subscriptions
+  // Firebase Realtime Subscriptions & User Lifecycle
   useEffect(() => {
     let unsubs: (() => void)[] = [];
 
     const unsubscribeAuth = onAuthStateChanged(auth, async currentUser => {
+      currentUserIdRef.current = currentUser ? currentUser.uid : null;
       setUser(currentUser);
       setIsAuthLoading(false);
 
@@ -197,53 +182,106 @@ export default function App() {
         // Sync user profile in Firestore
         syncUserProfile(currentUser).catch(err => console.error('Profile sync error:', err));
 
-        // Subscribe to live workouts
+        // Load any user-cached records first
+        try {
+          const cachedWeights = localStorage.getItem(getStorageKey('body_weights_v1', currentUser.uid));
+          if (cachedWeights) setBodyWeights(JSON.parse(cachedWeights));
+
+          const cachedMeasures = localStorage.getItem(getStorageKey('body_measurements_v1', currentUser.uid));
+          if (cachedMeasures) setBodyMeasurements(JSON.parse(cachedMeasures));
+
+          const cachedGoal = localStorage.getItem(getStorageKey('body_goal_v1', currentUser.uid));
+          if (cachedGoal) setBodyGoal(JSON.parse(cachedGoal));
+
+          const cachedSessions = localStorage.getItem(getStorageKey('user_sessions', currentUser.uid));
+          if (cachedSessions) setSessions(JSON.parse(cachedSessions));
+
+          const cachedPRs = localStorage.getItem(getStorageKey('user_prs', currentUser.uid));
+          if (cachedPRs) setPersonalRecords(JSON.parse(cachedPRs));
+
+          const cachedPhotos = localStorage.getItem(getStorageKey('body_photos_v1', currentUser.uid));
+          if (cachedPhotos) setBodyPhotos(JSON.parse(cachedPhotos));
+        } catch {
+          // ignore cache read error
+        }
+
+        // Check if one-time migration from guest is needed
+        const migrationKey = `fithome_migrated_${currentUser.uid}`;
+        const hasMigrated = localStorage.getItem(migrationKey);
+
+        // 1. Subscribe to live workouts
         const unsubWorkouts = subscribeUserWorkouts(currentUser.uid, remoteWorkouts => {
           if (remoteWorkouts && remoteWorkouts.length > 0) {
             setSessions(remoteWorkouts);
-          } else {
-            // Upload current local workouts if remote is empty
-            setSessions(local => {
-              if (local.length > 0) {
-                local.forEach(s => saveUserWorkoutToFirestore(currentUser.uid, s));
+          } else if (!hasMigrated) {
+            // First time migration from guest if remote is empty
+            const guestSessions = localStorage.getItem('fithome_guest_user_sessions');
+            if (guestSessions) {
+              try {
+                const parsed = JSON.parse(guestSessions);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  parsed.forEach(s => saveUserWorkoutToFirestore(currentUser.uid, s));
+                  setSessions(parsed);
+                }
+              } catch {
+                // ignore
               }
-              return local;
-            });
+            }
+          } else {
+            // Authorized state: collection was cleared / is empty
+            setSessions([]);
           }
         });
         unsubs.push(unsubWorkouts);
 
-        // Subscribe to live weights
+        // 2. Subscribe to live weights
         const unsubWeights = subscribeUserWeights(currentUser.uid, remoteWeights => {
           if (remoteWeights && remoteWeights.length > 0) {
             setBodyWeights(remoteWeights);
-          } else {
-            setBodyWeights(local => {
-              if (local.length > 0) {
-                local.forEach(w => saveUserWeightToFirestore(currentUser.uid, w));
+          } else if (!hasMigrated) {
+            // One-time guest migration if cloud is empty
+            const guestWeights = localStorage.getItem('fithome_guest_body_weights_v1') || localStorage.getItem('fithome_body_weights_v1');
+            if (guestWeights) {
+              try {
+                const parsed = JSON.parse(guestWeights);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  parsed.forEach(w => saveUserWeightToFirestore(currentUser.uid, w));
+                  setBodyWeights(parsed);
+                }
+              } catch {
+                // ignore
               }
-              return local;
-            });
+            }
+          } else {
+            setBodyWeights([]);
           }
         });
         unsubs.push(unsubWeights);
 
-        // Subscribe to live measurements
+        // 3. Subscribe to live measurements
         const unsubMeasurements = subscribeUserMeasurements(currentUser.uid, remoteMeasures => {
           if (remoteMeasures && remoteMeasures.length > 0) {
             setBodyMeasurements(remoteMeasures);
-          } else {
-            setBodyMeasurements(local => {
-              if (local.length > 0) {
-                local.forEach(m => saveUserMeasurementToFirestore(currentUser.uid, m));
+          } else if (!hasMigrated) {
+            const guestMeasures = localStorage.getItem('fithome_guest_body_measurements_v1') || localStorage.getItem('fithome_body_measurements_v1');
+            if (guestMeasures) {
+              try {
+                const parsed = JSON.parse(guestMeasures);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  parsed.forEach(m => saveUserMeasurementToFirestore(currentUser.uid, m));
+                  setBodyMeasurements(parsed);
+                }
+              } catch {
+                // ignore
               }
-              return local;
-            });
+            }
+          } else {
+            setBodyMeasurements([]);
           }
         });
         unsubs.push(unsubMeasurements);
 
-        // Subscribe to live body goal
+        // 4. Subscribe to live body goal
         const unsubGoal = subscribeUserGoal(currentUser.uid, remoteGoal => {
           if (remoteGoal && (remoteGoal.targetWeightKg || remoteGoal.customInitialWeightKg)) {
             setBodyGoal(remoteGoal);
@@ -251,20 +289,39 @@ export default function App() {
         });
         unsubs.push(unsubGoal);
 
-        // Subscribe to live PRs
+        // 5. Subscribe to live PRs
         const unsubRecords = subscribeUserRecords(currentUser.uid, remoteRecords => {
           if (remoteRecords && remoteRecords.length > 0) {
             setPersonalRecords(remoteRecords);
-          } else {
-            setPersonalRecords(local => {
-              if (local.length > 0) {
-                local.forEach(r => saveUserRecordToFirestore(currentUser.uid, r));
+          } else if (!hasMigrated) {
+            const guestPRs = localStorage.getItem('fithome_guest_user_prs') || localStorage.getItem('fithome_user_prs');
+            if (guestPRs) {
+              try {
+                const parsed = JSON.parse(guestPRs);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  parsed.forEach(r => saveUserRecordToFirestore(currentUser.uid, r));
+                  setPersonalRecords(parsed);
+                }
+              } catch {
+                // ignore
               }
-              return local;
-            });
+            }
+          } else {
+            setPersonalRecords([]);
           }
         });
         unsubs.push(unsubRecords);
+
+        // Mark migration as done so future empty states do not re-inject old guest records
+        localStorage.setItem(migrationKey, 'true');
+      } else {
+        // When logged out, reset memory state to guest cache
+        setSessions(loadInitial('user_sessions', []));
+        setPersonalRecords(loadInitial('user_prs', []));
+        setBodyWeights(loadInitial('body_weights_v1', []));
+        setBodyMeasurements(loadInitial('body_measurements_v1', []));
+        setBodyGoal(loadInitial('body_goal_v1', {}));
+        setBodyPhotos(loadInitial('body_photos_v1', []));
       }
     });
 
@@ -290,7 +347,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await logoutUser();
-      setSyncToast('Desconectado do Firebase. Dados salvos localmente.');
+      setSyncToast('Desconectado do Firebase. Modo local ativado.');
       setTimeout(() => setSyncToast(null), 4000);
     } catch (err: unknown) {
       console.error(err);
@@ -390,8 +447,8 @@ export default function App() {
     setSessions([]);
     setPersonalRecords([]);
     try {
-      localStorage.removeItem('fithome_user_sessions');
-      localStorage.removeItem('fithome_user_prs');
+      localStorage.removeItem(getStorageKey('user_sessions', user?.uid));
+      localStorage.removeItem(getStorageKey('user_prs', user?.uid));
     } catch {
       // ignore
     }
@@ -588,7 +645,7 @@ export default function App() {
                 FitHome
               </span>
               <span className="text-[10px] text-slate-500 hidden sm:inline -mt-0.5">
-                Treinos em Casa
+                Treinos em Casa & Evolução
               </span>
             </div>
           </div>

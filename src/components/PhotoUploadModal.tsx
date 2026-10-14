@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { ProgressPhoto } from '../types/bodyEvolution';
-import { X, Camera, Upload, AlertCircle } from 'lucide-react';
+import { getTodayDateString } from '../utils/bodyDateUtils';
+import { X, Camera, Upload, AlertCircle, Info } from 'lucide-react';
 
 interface PhotoUploadModalProps {
   onSave: (photo: Omit<ProgressPhoto, 'id' | 'createdAt'>) => void;
@@ -11,7 +12,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
   onSave,
   onClose
 }) => {
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => getTodayDateString());
   const [category, setCategory] = useState<'frente' | 'costas' | 'lado' | 'outro'>('frente');
   const [notes, setNotes] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -19,13 +20,14 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Compress image to ~60-90 KB to safely respect browser storage limits
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = e => {
         const img = new Image();
         img.onload = () => {
-          const maxDim = 1000;
+          const maxDim = 800; // 800px provides crisp detail with minimal storage footprint
           let width = img.width;
           let height = img.height;
 
@@ -48,10 +50,10 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
             return;
           }
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
           resolve(dataUrl);
         };
-        img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+        img.onerror = () => reject(new Error('Falha ao processar arquivo de imagem'));
         img.src = e.target?.result as string;
       };
       reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
@@ -64,7 +66,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setError('Por favor, selecione um arquivo de imagem válido (JPG, PNG, WebP).');
+      setError('Por favor, selecione um arquivo de imagem válido (JPG, PNG ou WebP).');
       return;
     }
 
@@ -74,7 +76,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       const compressedDataUrl = await compressImage(file);
       setPreviewUrl(compressedDataUrl);
     } catch {
-      setError('Erro ao processar imagem. Tente uma imagem diferente.');
+      setError('Erro ao processar imagem. Tente uma foto diferente.');
     } finally {
       setIsProcessing(false);
     }
@@ -91,12 +93,20 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       return;
     }
 
-    onSave({
-      date,
-      photoDataUrl: previewUrl,
-      category,
-      notes: notes.trim() || undefined
-    });
+    try {
+      onSave({
+        date,
+        photoDataUrl: previewUrl,
+        category,
+        notes: notes.trim() || undefined
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'QuotaExceededError') {
+        setError('Limite de armazenamento local do navegador atingido. Exclua fotos antigas antes de salvar novas.');
+      } else {
+        setError('Não foi possível salvar a foto.');
+      }
+    }
   };
 
   return (
@@ -128,11 +138,15 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Photo Picker / Preview */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Foto Corporal <span className="text-slate-500 font-normal">(Armazenada de forma 100% privada no seu navegador)</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                Foto Corporal
+              </label>
+              <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                <Info className="w-3 h-3" /> Privada no seu navegador
+              </span>
+            </div>
 
             {previewUrl ? (
               <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950 aspect-[3/4] max-h-72 mx-auto flex items-center justify-center">
@@ -160,10 +174,10 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               >
                 <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
                 <p className="text-xs font-semibold text-slate-300">
-                  {isProcessing ? 'Processando imagem...' : 'Clique para selecionar uma foto'}
+                  {isProcessing ? 'Otimizando imagem...' : 'Clique para selecionar uma foto'}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  JPG, PNG ou WebP (otimizada localmente)
+                  JPG, PNG ou WebP (compressão inteligente local)
                 </p>
               </div>
             )}
@@ -180,11 +194,12 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Data
+                Data da Foto
               </label>
               <input
                 type="date"
                 value={date}
+                max={getTodayDateString()}
                 onChange={e => setDate(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 required
@@ -214,7 +229,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
             </label>
             <textarea
               rows={2}
-              placeholder="Ex: Iluminação natural matinal, em jejum..."
+              placeholder="Ex: Iluminação matinal, pós-treino de pernas..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"

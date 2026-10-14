@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { WeightEntry } from '../types/bodyEvolution';
-import { X, Scale, Trash2 } from 'lucide-react';
+import { getTodayDateString, parseDecimalInput, formatDateBR } from '../utils/bodyDateUtils';
+import { X, Scale, Trash2, AlertCircle } from 'lucide-react';
 
 interface WeightFormModalProps {
   initialEntry?: WeightEntry | null;
@@ -19,11 +20,13 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
     if (initialEntry?.date) {
       return initialEntry.date.split('T')[0];
     }
-    return new Date().toISOString().split('T')[0];
+    return getTodayDateString();
   });
-  const [weightKg, setWeightKg] = useState(() => {
-    return initialEntry ? String(initialEntry.weightKg) : '';
+
+  const [weightInput, setWeightInput] = useState(() => {
+    return initialEntry ? String(initialEntry.weightKg).replace('.', ',') : '';
   });
+
   const [notes, setNotes] = useState(() => initialEntry?.notes || '');
   const [error, setError] = useState<string | null>(null);
 
@@ -31,13 +34,13 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
     e.preventDefault();
     setError(null);
 
-    const val = parseFloat(weightKg.replace(',', '.'));
-    if (isNaN(val) || val <= 0) {
-      setError('Por favor, informe um peso válido e maior que zero (ex: 74.5).');
+    const val = parseDecimalInput(weightInput);
+    if (val === null || val <= 0) {
+      setError('Por favor, informe um peso válido e maior que zero (ex: 74,5 ou 74.5).');
       return;
     }
-    if (val > 500) {
-      setError('Por favor, verifique o valor do peso informado.');
+    if (val < 20 || val > 400) {
+      setError('O peso informado deve estar entre 20 kg e 400 kg.');
       return;
     }
     if (!date) {
@@ -77,8 +80,9 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
-            {error}
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -90,25 +94,28 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
             <input
               type="date"
               value={date}
+              max={getTodayDateString()}
               onChange={e => setDate(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               required
             />
+            <p className="text-[11px] text-slate-500 mt-1">
+              Você pode registrar o peso de hoje ou de datas anteriores.
+            </p>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Peso (kg) <span className="text-slate-500 font-normal">com casas decimais</span>
+              Peso (kg) <span className="text-slate-500 font-normal">aceita vírgula ou ponto</span>
             </label>
             <div className="relative">
               <input
-                type="number"
-                step="0.05"
-                min="1"
-                max="500"
-                placeholder="Ex: 72.5"
-                value={weightKg}
-                onChange={e => setWeightKg(e.target.value)}
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
+                placeholder="Ex: 74,5"
+                value={weightInput}
+                onChange={e => setWeightInput(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 tabular-nums pr-12"
                 autoFocus
                 required
@@ -125,7 +132,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
             </label>
             <textarea
               rows={2}
-              placeholder="Ex: Em jejum pela manhã, após beber 500ml de água..."
+              placeholder="Ex: Em jejum, logo ao acordar..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -137,7 +144,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm('Deseja realmente excluir este registro de peso?')) {
+                  if (confirm(`Deseja excluir a pesagem de ${initialEntry.weightKg} kg do dia ${formatDateBR(initialEntry.date)}?`)) {
                     onDelete(initialEntry.id);
                   }
                 }}
@@ -162,7 +169,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
                 type="submit"
                 className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
               >
-                {initialEntry ? 'Salvar Alterações' : 'Registrar Peso'}
+                {initialEntry ? 'Salvar Alterações' : 'Salvar Pesagem'}
               </button>
             </div>
           </div>

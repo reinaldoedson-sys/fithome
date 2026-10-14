@@ -7,6 +7,16 @@ import {
   MEASUREMENT_LABELS,
   MeasurementKey
 } from '../types/bodyEvolution';
+import {
+  parseLocalDate,
+  formatDateBR,
+  formatDateShort,
+  getPeriodCutoffDate,
+  getTodayDateString
+} from '../utils/bodyDateUtils';
+import { calculateBmi } from '../utils/bmiUtils';
+import { deriveProgressMilestones } from '../utils/milestonesUtils';
+import { generateEvolutionReport, exportReportToCsv } from '../utils/reportUtils';
 import { WeightFormModal } from './WeightFormModal';
 import { MeasurementsFormModal } from './MeasurementsFormModal';
 import { GoalModal } from './GoalModal';
@@ -25,8 +35,13 @@ import {
   Trash2,
   Edit2,
   ArrowLeftRight,
-  Filter,
-  CheckCircle2
+  CheckCircle2,
+  Award,
+  FileText,
+  Printer,
+  Download,
+  Activity,
+  Info
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -35,7 +50,8 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid
+  CartesianGrid,
+  ReferenceLine
 } from 'recharts';
 
 interface BodyEvolutionProps {
@@ -65,10 +81,12 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
   onSavePhoto,
   onDeletePhoto
 }) => {
-  // Active sub-section / view tab
-  const [activeSubTab, setActiveSubTab] = useState<'resumo' | 'graficos' | 'historico' | 'fotos'>('resumo');
+  // Navigation sub-tabs
+  const [activeSubTab, setActiveSubTab] = useState<
+    'resumo' | 'graficos' | 'imc' | 'marcos' | 'relatorios' | 'comparacao' | 'historico' | 'fotos'
+  >('resumo');
 
-  // Modals state
+  // Modal triggers
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [editingWeight, setEditingWeight] = useState<WeightEntry | null>(null);
 
@@ -86,54 +104,28 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
   // Timeline filter
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'weight' | 'measurements'>('all');
 
-  // Helper date formatter DD/MM/YYYY
-  const formatDateBR = (isoDate: string) => {
-    try {
-      const parts = isoDate.split('T')[0].split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      return isoDate;
-    } catch {
-      return isoDate;
-    }
-  };
-
-  const formatDateShort = (isoDate: string) => {
-    try {
-      const parts = isoDate.split('T')[0].split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}`;
-      }
-      return isoDate;
-    } catch {
-      return isoDate;
-    }
-  };
-
-  // --- WEIGHT CALCULATIONS ---
-  // Sorted chronologically (oldest to newest)
+  // --- SORTED WEIGHTS CHRONOLOGICALLY ---
   const sortedWeightsAsc = useMemo(() => {
     return [...weights].sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      if (dateA !== dateB) return dateA - dateB;
+      const timeA = parseLocalDate(a.date).getTime();
+      const timeB = parseLocalDate(b.date).getTime();
+      if (timeA !== timeB) return timeA - timeB;
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
   }, [weights]);
 
-  // Current weight: most recent record
+  // Current weight: latest valid record
   const currentWeightEntry = sortedWeightsAsc[sortedWeightsAsc.length - 1];
   const currentWeight = currentWeightEntry?.weightKg;
 
-  // Initial weight: first historical record OR custom reference baseline set in goals
+  // Initial weight baseline
   const historicalFirstWeightEntry = sortedWeightsAsc[0];
   const baselineInitialWeight =
     goal.customInitialWeightKg !== undefined && goal.customInitialWeightKg > 0
       ? goal.customInitialWeightKg
       : historicalFirstWeightEntry?.weightKg;
 
-  // Weight variation
+  // Total weight variation from baseline
   const weightDelta =
     currentWeight !== undefined && baselineInitialWeight !== undefined
       ? Number((currentWeight - baselineInitialWeight).toFixed(2))
@@ -144,7 +136,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
       ? Number(((weightDelta / baselineInitialWeight) * 100).toFixed(1))
       : undefined;
 
-  // Goal progress calculation
+  // Goal progress
   const goalTarget = goal.targetWeightKg;
   let goalRemainingDelta: number | undefined = undefined;
   let goalProgressPct: number | undefined = undefined;
@@ -155,13 +147,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
     if (baselineInitialWeight !== undefined && baselineInitialWeight !== goalTarget) {
       if (goalTarget < baselineInitialWeight) {
-        // Goal is losing weight
         const totalToLose = baselineInitialWeight - goalTarget;
         const lostSoFar = baselineInitialWeight - currentWeight;
         goalProgressPct = Math.min(100, Math.max(0, Math.round((lostSoFar / totalToLose) * 100)));
         isGoalReached = currentWeight <= goalTarget;
       } else {
-        // Goal is gaining weight
         const totalToGain = goalTarget - baselineInitialWeight;
         const gainedSoFar = currentWeight - baselineInitialWeight;
         goalProgressPct = Math.min(100, Math.max(0, Math.round((gainedSoFar / totalToGain) * 100)));
@@ -170,46 +160,167 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
     }
   }
 
-  // --- FILTERED WEIGHT CHART DATA ---
-  const filteredWeightChartData = useMemo(() => {
-    if (sortedWeightsAsc.length === 0) return [];
+  // --- IMC (CURRENT & HISTORICAL) ---
+  const userHeightCm = goal.heightCm;
+  const currentBmiInfo = useMemo(() => {
+    return calculateBmi(currentWeight, userHeightCm);
+  }, [currentWeight, userHeightCm]);
 
-    const nowTime = new Date().getTime();
-    const cutoffMap = {
-      '30d': nowTime - 30 * 24 * 60 * 60 * 1000,
-      '3m': nowTime - 90 * 24 * 60 * 60 * 1000,
-      '6m': nowTime - 180 * 24 * 60 * 60 * 1000,
-      '1y': nowTime - 365 * 24 * 60 * 60 * 1000,
-      'all': 0
-    };
+  // Historical BMI data points for chart
+  const historicalBmiChartData = useMemo(() => {
+    if (!userHeightCm || sortedWeightsAsc.length === 0) return [];
 
-    const cutoff = cutoffMap[weightPeriod];
-    const filtered = sortedWeightsAsc.filter(w => new Date(w.date).getTime() >= cutoff);
+    const dateCounts: Record<string, number> = {};
+    const dateTotal: Record<string, number> = {};
+    sortedWeightsAsc.forEach(w => {
+      const d = w.date.split('T')[0];
+      dateTotal[d] = (dateTotal[d] || 0) + 1;
+    });
 
-    return filtered.map(w => ({
-      id: w.id,
-      date: w.date,
-      dateFormatted: formatDateShort(w.date),
-      fullDate: formatDateBR(w.date),
-      weightKg: w.weightKg,
-      notes: w.notes
-    }));
-  }, [sortedWeightsAsc, weightPeriod]);
+    return sortedWeightsAsc.map(w => {
+      const d = w.date.split('T')[0];
+      dateCounts[d] = (dateCounts[d] || 0) + 1;
+      const count = dateCounts[d];
+      const hasMultiple = (dateTotal[d] || 0) > 1;
 
-  // --- BODY MEASUREMENTS SORTED & CHART DATA ---
+      let dateFormatted = formatDateShort(w.date);
+      if (hasMultiple) {
+        dateFormatted = `${dateFormatted} (${count}ª)`;
+      }
+
+      const bmiResult = calculateBmi(w.weightKg, userHeightCm);
+
+      return {
+        id: w.id,
+        date: w.date,
+        dateFormatted,
+        fullDate: formatDateBR(w.date),
+        indexInDay: hasMultiple ? count : undefined,
+        weightKg: w.weightKg,
+        bmi: bmiResult?.bmi || 0,
+        bmiLabel: bmiResult?.label || '',
+        notes: w.notes
+      };
+    });
+  }, [sortedWeightsAsc, userHeightCm]);
+
+  // --- AUTOMATIC PROGRESS MILESTONES ---
   const sortedMeasurementsAsc = useMemo(() => {
     return [...measurements].sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      if (dateA !== dateB) return dateA - dateB;
+      const timeA = parseLocalDate(a.date).getTime();
+      const timeB = parseLocalDate(b.date).getTime();
+      if (timeA !== timeB) return timeA - timeB;
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
   }, [measurements]);
 
-  // Chart data for selected measurement region
+  const milestones = useMemo(() => {
+    return deriveProgressMilestones(sortedWeightsAsc, sortedMeasurementsAsc, goal);
+  }, [sortedWeightsAsc, sortedMeasurementsAsc, goal]);
+
+  // --- REPORT SECTION STATE ---
+  const allRecordedDates = useMemo(() => {
+    const set = new Set<string>();
+    weights.forEach(w => set.add(w.date.split('T')[0]));
+    measurements.forEach(m => set.add(m.date.split('T')[0]));
+    return Array.from(set).sort((a, b) => parseLocalDate(a).getTime() - parseLocalDate(b).getTime());
+  }, [weights, measurements]);
+
+  const [reportStartDate, setReportStartDate] = useState<string>(() => {
+    return allRecordedDates[0] || getTodayDateString();
+  });
+  const [reportEndDate, setReportEndDate] = useState<string>(() => {
+    return allRecordedDates[allRecordedDates.length - 1] || getTodayDateString();
+  });
+
+  // Generated on-demand report
+  const generatedReport = useMemo(() => {
+    return generateEvolutionReport(
+      reportStartDate,
+      reportEndDate,
+      sortedWeightsAsc,
+      sortedMeasurementsAsc,
+      goal
+    );
+  }, [reportStartDate, reportEndDate, sortedWeightsAsc, sortedMeasurementsAsc, goal]);
+
+  // Shortcut period for reports
+  const handleApplyReportPreset = (preset: '30d' | '90d' | 'year' | 'all') => {
+    const today = getTodayDateString();
+    setReportEndDate(today);
+
+    if (preset === 'all') {
+      setReportStartDate(allRecordedDates[0] || today);
+    } else if (preset === '30d') {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      setReportStartDate(d.toISOString().split('T')[0]);
+    } else if (preset === '90d') {
+      const d = new Date();
+      d.setDate(d.getDate() - 90);
+      setReportStartDate(d.toISOString().split('T')[0]);
+    } else if (preset === 'year') {
+      const yearStart = `${new Date().getFullYear()}-01-01`;
+      setReportStartDate(yearStart);
+    }
+  };
+
+  // --- FILTERED WEIGHT CHART DATA ---
+  const filteredWeightChartData = useMemo(() => {
+    if (sortedWeightsAsc.length === 0) return [];
+
+    const cutoffTime = getPeriodCutoffDate(weightPeriod).getTime();
+    const filtered = sortedWeightsAsc.filter(
+      w => parseLocalDate(w.date).getTime() >= cutoffTime
+    );
+
+    const dateCounts: Record<string, number> = {};
+    const dateTotal: Record<string, number> = {};
+    filtered.forEach(w => {
+      const d = w.date.split('T')[0];
+      dateTotal[d] = (dateTotal[d] || 0) + 1;
+    });
+
+    return filtered.map(w => {
+      const d = w.date.split('T')[0];
+      dateCounts[d] = (dateCounts[d] || 0) + 1;
+      const count = dateCounts[d];
+      const hasMultiple = (dateTotal[d] || 0) > 1;
+
+      let dateFormatted = formatDateShort(w.date);
+      if (hasMultiple) {
+        dateFormatted = `${dateFormatted} (${count}ª)`;
+      }
+
+      return {
+        id: w.id,
+        date: w.date,
+        dateFormatted,
+        fullDate: formatDateBR(w.date),
+        indexInDay: hasMultiple ? count : undefined,
+        weightKg: w.weightKg,
+        notes: w.notes
+      };
+    });
+  }, [sortedWeightsAsc, weightPeriod]);
+
+  // Available measurement keys
+  const availableMeasurementKeys = useMemo(() => {
+    const set = new Set<MeasurementKey>();
+    measurements.forEach(m => {
+      (Object.keys(m.measurements) as MeasurementKey[]).forEach(k => {
+        if (m.measurements[k] !== undefined && m.measurements[k]! > 0) {
+          set.add(k);
+        }
+      });
+    });
+    return Array.from(set);
+  }, [measurements]);
+
+  // Chart data for selected body region
   const measurementChartData = useMemo(() => {
     const list = sortedMeasurementsAsc
-      .filter(m => m.measurements[selectedMeasurementKey] !== undefined)
+      .filter(m => m.measurements[selectedMeasurementKey] !== undefined && m.measurements[selectedMeasurementKey]! > 0)
       .map(m => ({
         id: m.id,
         date: m.date,
@@ -221,7 +332,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
     return list;
   }, [sortedMeasurementsAsc, selectedMeasurementKey]);
 
-  // Regional measurements comparison (first vs latest for every body part)
+  // Regional variations (initial vs latest)
   const measurementVariations = useMemo(() => {
     const results: Array<{
       key: MeasurementKey;
@@ -235,7 +346,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
     (Object.keys(MEASUREMENT_LABELS) as MeasurementKey[]).forEach(k => {
       const entriesWithMeasure = sortedMeasurementsAsc.filter(
-        m => m.measurements[k] !== undefined
+        m => m.measurements[k] !== undefined && m.measurements[k]! > 0
       );
 
       if (entriesWithMeasure.length > 0) {
@@ -264,22 +375,94 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
     return results;
   }, [sortedMeasurementsAsc]);
 
-  // Available measurement keys that have at least one record
-  const availableMeasurementKeys = useMemo(() => {
-    const set = new Set<MeasurementKey>();
-    measurements.forEach(m => {
-      (Object.keys(m.measurements) as MeasurementKey[]).forEach(k => {
-        if (m.measurements[k] !== undefined) set.add(k);
-      });
-    });
-    return Array.from(set);
-  }, [measurements]);
+  // Two-date period comparison state
+  const [compareDateA, setCompareDateA] = useState<string>(() => allRecordedDates[0] || '');
+  const [compareDateB, setCompareDateB] = useState<string>(
+    () => allRecordedDates[allRecordedDates.length - 1] || ''
+  );
 
-  // --- UNIFIED CHRONOLOGICAL TIMELINE ---
+  React.useEffect(() => {
+    if (allRecordedDates.length > 0) {
+      if (!compareDateA || !allRecordedDates.includes(compareDateA)) {
+        setCompareDateA(allRecordedDates[0]);
+      }
+      if (!compareDateB || !allRecordedDates.includes(compareDateB)) {
+        setCompareDateB(allRecordedDates[allRecordedDates.length - 1]);
+      }
+    }
+  }, [allRecordedDates]);
+
+  const periodComparisonData = useMemo(() => {
+    if (!compareDateA || !compareDateB) return null;
+
+    const weightsA = sortedWeightsAsc.filter(w => w.date.split('T')[0] === compareDateA);
+    const weightEntryA = weightsA[weightsA.length - 1];
+
+    const weightsB = sortedWeightsAsc.filter(w => w.date.split('T')[0] === compareDateB);
+    const weightEntryB = weightsB[weightsB.length - 1];
+
+    let weightDeltaComp: number | undefined = undefined;
+    let weightDeltaCompPct: number | undefined = undefined;
+
+    if (weightEntryA && weightEntryB) {
+      weightDeltaComp = Number((weightEntryB.weightKg - weightEntryA.weightKg).toFixed(2));
+      if (weightEntryA.weightKg > 0) {
+        weightDeltaCompPct = Number(((weightDeltaComp / weightEntryA.weightKg) * 100).toFixed(1));
+      }
+    }
+
+    const measureEntryA = sortedMeasurementsAsc
+      .filter(m => m.date.split('T')[0] === compareDateA)
+      .slice(-1)[0];
+    const measureEntryB = sortedMeasurementsAsc
+      .filter(m => m.date.split('T')[0] === compareDateB)
+      .slice(-1)[0];
+
+    const regionsComparison: Array<{
+      key: MeasurementKey;
+      name: string;
+      valA?: number;
+      valB?: number;
+      diff?: number;
+    }> = [];
+
+    (Object.keys(MEASUREMENT_LABELS) as MeasurementKey[]).forEach(k => {
+      const valA = measureEntryA?.measurements?.[k];
+      const valB = measureEntryB?.measurements?.[k];
+
+      if (valA !== undefined || valB !== undefined) {
+        const diff =
+          valA !== undefined && valB !== undefined
+            ? Number((valB - valA).toFixed(1))
+            : undefined;
+
+        regionsComparison.push({
+          key: k,
+          name: MEASUREMENT_LABELS[k].name,
+          valA,
+          valB,
+          diff
+        });
+      }
+    });
+
+    return {
+      dateA: compareDateA,
+      dateB: compareDateB,
+      weightA: weightEntryA?.weightKg,
+      weightB: weightEntryB?.weightKg,
+      weightDeltaComp,
+      weightDeltaCompPct,
+      regionsComparison
+    };
+  }, [compareDateA, compareDateB, sortedWeightsAsc, sortedMeasurementsAsc]);
+
+  // Unified timeline
   const unifiedTimeline = useMemo(() => {
     interface TimelineItem {
       id: string;
       date: string;
+      createdAt: string;
       type: 'weight' | 'measurement';
       weightEntry?: WeightEntry;
       measurementEntry?: MeasurementEntry;
@@ -292,6 +475,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
         items.push({
           id: `w-${w.id}`,
           date: w.date,
+          createdAt: w.createdAt,
           type: 'weight',
           weightEntry: w
         });
@@ -303,33 +487,37 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
         items.push({
           id: `m-${m.id}`,
           date: m.date,
+          createdAt: m.createdAt,
           type: 'measurement',
           measurementEntry: m
         });
       });
     }
 
-    // Sort descending (latest first)
-    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return items.sort((a, b) => {
+      const timeA = parseLocalDate(a.date).getTime();
+      const timeB = parseLocalDate(b.date).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   }, [weights, measurements, timelineFilter]);
 
-  // Is completely empty?
   const isCompletelyEmpty = weights.length === 0 && measurements.length === 0;
 
   return (
     <div className="space-y-6">
       {/* Top Header & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-display">
-            Evolução Corporal & Medidas
+            Evolução Corporal
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Acompanhe a evolução do seu peso, circunferências corporais e metas físicas ao longo do tempo.
+            Acompanhe peso, medidas corporais, IMC, marcos de conquista e relatórios completos.
           </p>
         </div>
 
-        {/* Primary Action Buttons */}
+        {/* Action Shortcuts */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
@@ -359,10 +547,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             type="button"
             onClick={() => setShowGoalModal(true)}
             className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-            title="Configurar Metas"
+            title="Ajustar Metas e Altura"
           >
             <Target className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">Metas</span>
+            <span className="hidden sm:inline">Metas & Altura</span>
           </button>
 
           <button
@@ -378,11 +566,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
       </div>
 
       {/* Sub-Tabs Navigation */}
-      <div className="flex items-center gap-1 p-1 bg-slate-900/90 border border-slate-800 rounded-xl max-w-fit overflow-x-auto">
+      <div className="flex items-center gap-1 p-1 bg-slate-900/90 border border-slate-800 rounded-xl max-w-full overflow-x-auto print:hidden">
         <button
           type="button"
           onClick={() => setActiveSubTab('resumo')}
-          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
             activeSubTab === 'resumo'
               ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
@@ -393,18 +581,66 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
         <button
           type="button"
           onClick={() => setActiveSubTab('graficos')}
-          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
             activeSubTab === 'graficos'
               ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Gráficos Interativos
+          Gráficos
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('imc')}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1 ${
+            activeSubTab === 'imc'
+              ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Activity className="w-3 h-3" />
+          <span>IMC & Saúde</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('marcos')}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1 ${
+            activeSubTab === 'marcos'
+              ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Award className="w-3 h-3" />
+          <span>Marcos ({milestones.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('relatorios')}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1 ${
+            activeSubTab === 'relatorios'
+              ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <FileText className="w-3 h-3" />
+          <span>Relatórios</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('comparacao')}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1 ${
+            activeSubTab === 'comparacao'
+              ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <ArrowLeftRight className="w-3 h-3" />
+          <span>Comparar Datas</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveSubTab('historico')}
-          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
             activeSubTab === 'historico'
               ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
@@ -415,13 +651,13 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
         <button
           type="button"
           onClick={() => setActiveSubTab('fotos')}
-          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
             activeSubTab === 'fotos'
               ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <span>Fotos de Progresso</span>
+          <span>Fotos</span>
           {photos.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-950/80 text-emerald-300 font-bold tabular-nums">
               {photos.length}
@@ -430,7 +666,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
         </button>
       </div>
 
-      {/* EMPTY STATE (When no records exist yet) */}
+      {/* EMPTY STATE */}
       {isCompletelyEmpty ? (
         <div className="text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800 p-8 max-w-2xl mx-auto shadow-sm">
           <div className="w-14 h-14 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 mx-auto mb-4">
@@ -440,7 +676,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             Nenhum registro de evolução corporal cadastrado
           </h3>
           <p className="text-xs sm:text-sm text-slate-400 mb-6 max-w-md mx-auto leading-relaxed">
-            Comece registrando o seu peso de hoje ou suas circunferências corporais (cintura, braço, tórax). Todas as medições são salvas com segurança no seu navegador para você acompanhar sua evolução.
+            Comece registrando o seu peso de hoje ou suas circunferências corporais (cintura, abdômen, tórax, braços). Seus dados ficam salvos de forma segura e sincronizados.
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
@@ -469,10 +705,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
         </div>
       ) : (
         <>
-          {/* TAB 1: RESUMO DA EVOLUÇÃO */}
+          {/* TAB 1: RESUMO GERAL */}
           {activeSubTab === 'resumo' && (
             <div className="space-y-6">
-              {/* Summary KPI Cards Grid */}
+              {/* Highlight KPI Cards Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* 1. Peso Atual */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
@@ -486,7 +722,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         {currentWeight} <span className="text-sm font-normal text-slate-400">kg</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">Sem registros</span>
+                      <span className="text-xs text-slate-500">Sem pesagem</span>
                     )}
                   </div>
                   <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-1 truncate">
@@ -515,7 +751,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     )}
                   </div>
                   <div className="text-[11px] text-slate-500 truncate mt-1">
-                    {historicalFirstWeightEntry ? `Desde ${formatDateBR(historicalFirstWeightEntry.date)}` : 'Base de cálculo'}
+                    {historicalFirstWeightEntry ? `Desde ${formatDateBR(historicalFirstWeightEntry.date)}` : 'Ponto de partida'}
                   </div>
                 </div>
 
@@ -539,17 +775,17 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         {weightDelta > 0 ? `+${weightDelta}` : weightDelta} <span className="text-sm font-normal text-slate-400">kg</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">Aguardando mais dados</span>
+                      <span className="text-xs text-slate-500">Aguardando dados</span>
                     )}
                   </div>
                   <div className="text-[11px] text-slate-400 truncate mt-1">
                     {weightDelta !== undefined && weightDeltaPct !== undefined ? (
                       <span>
-                        {weightDelta < 0 ? 'Perda de ' : weightDelta > 0 ? 'Ganho de ' : 'Estável ('}
+                        {weightDelta < 0 ? 'Redução de ' : weightDelta > 0 ? 'Aumento de ' : 'Estável ('}
                         <strong className="text-slate-200">{Math.abs(weightDeltaPct)}%</strong>
                       </span>
                     ) : (
-                      <span>Variação em relação ao inicial</span>
+                      <span>Variação vs ponto inicial</span>
                     )}
                   </div>
                 </div>
@@ -585,7 +821,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     {goalRemainingDelta !== undefined ? (
                       isGoalReached ? (
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Meta atingida!
+                          <CheckCircle2 className="w-3 h-3" /> Meta alcançada!
                         </span>
                       ) : (
                         <span>
@@ -593,27 +829,27 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         </span>
                       )
                     ) : (
-                      <span>{goal.targetDate ? `Até ${formatDateBR(goal.targetDate)}` : 'Sem prazo definido'}</span>
+                      <span>{goal.targetDate ? `Até ${formatDateBR(goal.targetDate)}` : 'Sem prazo'}</span>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Goal Progress Banner (if goal is configured) */}
+              {/* Goal Progress Banner */}
               {goalTarget !== undefined && goalProgressPct !== undefined && (
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Target className="w-4 h-4 text-emerald-400" />
                       <span className="text-xs font-bold text-slate-200">
-                        Progresso da Meta de Peso ({goalTarget} kg)
+                        Progresso em Direção à Meta ({goalTarget} kg)
                       </span>
                     </div>
                     <span className="text-xs font-bold text-emerald-400 tabular-nums">
                       {goalProgressPct}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
+                  <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-2">
                     <div
                       className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                       style={{ width: `${goalProgressPct}%` }}
@@ -627,13 +863,60 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 </div>
               )}
 
-              {/* Mini Weight Chart Quick Glance */}
+              {/* BMI Summary Teaser Card */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-100">
+                        Índice de Massa Corporal (IMC)
+                      </h3>
+                      {currentBmiInfo && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${currentBmiInfo.color}`}>
+                          {currentBmiInfo.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {currentBmiInfo
+                        ? `IMC Atual: ${currentBmiInfo.bmi} kg/m² para estatura de ${userHeightCm} cm.`
+                        : 'Cadastre sua altura para habilitar o cálculo automático do IMC e faixas de peso saudáveis.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                  {currentBmiInfo ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubTab('imc')}
+                      className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                    >
+                      <span>Ver Análise de IMC</span> →
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowGoalModal(true)}
+                      className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Cadastrar Altura</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Glance Weight Chart */}
               {filteredWeightChartData.length > 0 && (
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-sm sm:text-base font-bold text-slate-100">
-                        Histórico Rápido de Peso
+                        Tendência Recente de Peso
                       </h3>
                       <p className="text-xs text-slate-400">
                         {filteredWeightChartData.length} registros cadastrados
@@ -644,7 +927,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       onClick={() => setActiveSubTab('graficos')}
                       className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
                     >
-                      Ver Gráficos Detalhados →
+                      Abrir Gráficos Detalhados →
                     </button>
                   </div>
 
@@ -673,7 +956,9 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                               const d = payload[0].payload;
                               return (
                                 <div className="bg-slate-900 border border-slate-700 p-2.5 rounded-xl shadow-xl text-xs">
-                                  <div className="font-semibold text-slate-300 mb-1">{d.fullDate}</div>
+                                  <div className="font-semibold text-slate-300 mb-1">
+                                    {d.fullDate} {d.indexInDay ? `(${d.indexInDay}ª pesagem)` : ''}
+                                  </div>
                                   <div className="text-base font-extrabold text-emerald-400 font-display tabular-nums">
                                     {d.weightKg} kg
                                   </div>
@@ -698,7 +983,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 </div>
               )}
 
-              {/* Regional Measurements Delta Table (Gráfico 3 — Variação das medidas) */}
+              {/* Regional Measurements Delta Table */}
               {measurementVariations.length > 0 && (
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
@@ -707,7 +992,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         Variação de Medidas Corporais (Início vs Atual)
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Diferença em centímetros comparando o primeiro e o mais recente registro de cada região.
+                        Diferença em centímetros comparando o primeiro e o mais recente registro de cada região corporal.
                       </p>
                     </div>
                   </div>
@@ -774,11 +1059,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       <span>Gráfico 1: Evolução do Peso Corporal</span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Curva histórica de pesagem em quilogramas (kg) ao longo do tempo.
+                      Histórico completo de pesagem com filtros de período e escala dinâmica.
                     </p>
                   </div>
 
-                  {/* Period filter buttons: 30d, 3m, 6m, 1y, all */}
+                  {/* Period filter buttons */}
                   <div className="flex items-center gap-1 p-1 bg-slate-950/80 border border-slate-800 rounded-xl self-start sm:self-auto overflow-x-auto">
                     {[
                       { key: '30d' as const, label: '30 dias' },
@@ -804,7 +1089,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 </div>
 
                 {filteredWeightChartData.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500 text-xs">
+                  <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
                     Nenhum registro de peso no período selecionado.
                   </div>
                 ) : (
@@ -834,7 +1119,9 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                               const d = payload[0].payload;
                               return (
                                 <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs">
-                                  <div className="font-bold text-slate-200 mb-1">{d.fullDate}</div>
+                                  <div className="font-bold text-slate-200 mb-1">
+                                    {d.fullDate} {d.indexInDay ? `(${d.indexInDay}ª pesagem do dia)` : ''}
+                                  </div>
                                   <div className="text-lg font-extrabold text-emerald-400 font-display tabular-nums">
                                     {d.weightKg} kg
                                   </div>
@@ -876,7 +1163,6 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     </p>
                   </div>
 
-                  {/* Body Region Selector Dropdown */}
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-slate-400 font-medium">Região:</label>
                     <select
@@ -897,8 +1183,8 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 </div>
 
                 {measurementChartData.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500 text-xs">
-                    Nenhum registro encontrado para {MEASUREMENT_LABELS[selectedMeasurementKey].name}. Preencha esta medida ao registrar suas circunferências.
+                  <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                    Nenhum registro encontrado para {MEASUREMENT_LABELS[selectedMeasurementKey].name}.
                   </div>
                 ) : (
                   <div className="w-full h-72 sm:h-80 select-none">
@@ -961,7 +1247,662 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             </div>
           )}
 
-          {/* TAB 3: HISTÓRICO CRONOLÓGICO */}
+          {/* TAB 3: IMC & SAÚDE */}
+          {activeSubTab === 'imc' && (
+            <div className="space-y-6">
+              {!userHeightCm ? (
+                <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-center max-w-xl mx-auto shadow-sm">
+                  <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-100 mb-2">
+                    Altura Não Cadastrada
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-400 mb-6 leading-relaxed">
+                    Para calcular o Índice de Massa Corporal (IMC) e exibir as faixas de peso saudáveis da OMS, informe sua estatura nas configurações de meta.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowGoalModal(true)}
+                    className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all inline-flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                    <span>Cadastrar Minha Altura</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Current BMI Card & Reference Scales */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left: BMI Gauge / Value */}
+                    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                          <span className="font-semibold uppercase tracking-wider">IMC Atual</span>
+                          <span className="text-slate-500">Altura: {userHeightCm} cm</span>
+                        </div>
+                        <div className="flex items-baseline gap-2 mb-2">
+                          <span className="text-4xl sm:text-5xl font-black text-slate-100 font-display tabular-nums">
+                            {currentBmiInfo?.bmi}
+                          </span>
+                          <span className="text-xs text-slate-400 font-semibold">kg/m²</span>
+                        </div>
+                        {currentBmiInfo && (
+                          <div className={`inline-block px-3 py-1 rounded-xl text-xs font-bold border mb-3 ${currentBmiInfo.color}`}>
+                            {currentBmiInfo.label}
+                          </div>
+                        )}
+                        <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                          {currentBmiInfo?.description}
+                        </p>
+                      </div>
+
+                      {/* Healthy weight range info */}
+                      {currentBmiInfo && (
+                        <div className="pt-3 border-t border-slate-800/80 text-xs">
+                          <span className="text-slate-400 block mb-1">Faixa de peso saudável para sua altura:</span>
+                          <span className="font-bold text-emerald-400 tabular-nums">
+                            {currentBmiInfo.healthyWeightRange.minKg} kg — {currentBmiInfo.healthyWeightRange.maxKg} kg
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: WHO Classification Reference Table */}
+                    <div className="lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-slate-200">
+                          Tabela de Classificação da OMS (Adultos)
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setShowGoalModal(true)}
+                          className="text-xs text-emerald-400 hover:underline"
+                        >
+                          Alterar Altura
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        {[
+                          { range: '< 18.5', label: 'Abaixo do peso', classKey: 'abaixo_peso', color: 'text-amber-400' },
+                          { range: '18.5 – 24.9', label: 'Eutrofia / Normal', classKey: 'normal', color: 'text-emerald-400' },
+                          { range: '25.0 – 29.9', label: 'Sobrepeso', classKey: 'sobrepeso', color: 'text-yellow-400' },
+                          { range: '30.0 – 34.9', label: 'Obesidade Grau I', classKey: 'obesidade_1', color: 'text-orange-400' },
+                          { range: '35.0 – 39.9', label: 'Obesidade Grau II', classKey: 'obesidade_2', color: 'text-rose-400' },
+                          { range: '≥ 40.0', label: 'Obesidade Grau III', classKey: 'obesidade_3', color: 'text-red-400' }
+                        ].map(c => {
+                          const isCurrent = currentBmiInfo?.classification === c.classKey;
+                          return (
+                            <div
+                              key={c.classKey}
+                              className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                                isCurrent
+                                  ? 'bg-slate-800/90 border-emerald-500/50 shadow-sm'
+                                  : 'bg-slate-950/60 border-slate-800/60 opacity-80'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2.5 h-2.5 rounded-full ${c.color.replace('text-', 'bg-')}`} />
+                                <span className={`font-semibold ${isCurrent ? 'text-slate-100 font-bold' : 'text-slate-300'}`}>
+                                  {c.label}
+                                </span>
+                                {isCurrent && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
+                                    Seu IMC
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-mono text-slate-400">{c.range}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Clinical explanation & limitations */}
+                      <div className="mt-4 p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-start gap-2">
+                        <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Nota clínica:</strong> O IMC é um indicador populacional de triagem clínica para adultos e não deve ser tratado como diagnóstico isolado. Ele não mede diretamente a porcentagem de gordura corporal nem diferencia massa muscular hipertrofiada de adiposidade.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Historical BMI Chart */}
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm">
+                    <div className="mb-4">
+                      <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-emerald-400" />
+                        <span>Evolução Histórica do IMC</span>
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Acompanhe a curva do seu índice de massa corporal a cada pesagem ao longo do tempo.
+                      </p>
+                    </div>
+
+                    {historicalBmiChartData.length === 0 ? (
+                      <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                        Nenhuma pesagem cadastrada para traçar a curva de IMC.
+                      </div>
+                    ) : (
+                      <div className="w-full h-72 sm:h-80 select-none">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={historicalBmiChartData}
+                            margin={{ top: 10, right: 15, left: -10, bottom: 0 }}
+                          >
+                            <CartesianGrid stroke="#334155" strokeDasharray="4 4" opacity={0.3} vertical={false} />
+                            <ReferenceLine y={24.9} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Limite Normal (24.9)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
+                            <ReferenceLine y={18.5} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: 'Limite Baixo Peso (18.5)', fill: '#f59e0b', fontSize: 10, position: 'insideBottomRight' }} />
+                            <XAxis
+                              dataKey="dateFormatted"
+                              stroke="#64748b"
+                              tick={{ fill: '#94a3b8', fontSize: 11 }}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              stroke="#64748b"
+                              tick={{ fill: '#94a3b8', fontSize: 11 }}
+                              tickLine={false}
+                              domain={['dataMin - 1', 'dataMax + 1']}
+                              tickFormatter={val => `${val}`}
+                            />
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const d = payload[0].payload;
+                                  return (
+                                    <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs">
+                                      <div className="font-bold text-slate-200 mb-1">
+                                        {d.fullDate} {d.indexInDay ? `(${d.indexInDay}ª pesagem)` : ''}
+                                      </div>
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-lg font-black text-emerald-400 font-display tabular-nums">
+                                          IMC: {d.bmi}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400">({d.bmiLabel})</span>
+                                      </div>
+                                      <div className="text-slate-300 text-[11px]">
+                                        Peso registrado: <strong>{d.weightKg} kg</strong>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="bmi"
+                              stroke="#10b981"
+                              strokeWidth={3}
+                              dot={{ r: 4.5, fill: '#10b981', stroke: '#022c22', strokeWidth: 2 }}
+                              activeDot={{ r: 7, fill: '#34d399', stroke: '#022c22', strokeWidth: 2.5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: MARCOS DE PROGRESSO */}
+          {activeSubTab === 'marcos' && (
+            <div className="space-y-6">
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                      <Award className="w-5 h-5 text-emerald-400" />
+                      <span>Linha do Tempo de Conquistas e Marcos</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Marcos calculados deterministicamente a partir do seu histórico de pesagens e medições.
+                    </p>
+                  </div>
+                </div>
+
+                {milestones.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                    Ainda não há marcos suficientes registrados. Continue consistente nos treinos e registros!
+                  </div>
+                ) : (
+                  <div className="relative pl-6 sm:pl-8 border-l border-emerald-500/30 space-y-6 ml-2 sm:ml-4 my-4">
+                    {milestones.map((ms, idx) => (
+                      <div key={ms.id} className="relative group">
+                        {/* Milestone dot */}
+                        <div className="absolute -left-[31px] sm:-left-[39px] top-1 w-6 h-6 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-300 shadow-md">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </div>
+
+                        {/* Milestone card */}
+                        <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-4 hover:border-slate-700 transition-colors">
+                          <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                            <span className="font-bold text-sm text-slate-100">
+                              {ms.title}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {ms.badge && (
+                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  {ms.badge}
+                                </span>
+                              )}
+                              <span className="text-xs text-slate-400 font-medium">
+                                {formatDateBR(ms.date)}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-300 leading-relaxed">
+                            {ms.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: RELATÓRIOS POR PERÍODO */}
+          {activeSubTab === 'relatorios' && (
+            <div className="space-y-6">
+              {/* Controls bar (Dates + Presets + Export buttons) */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm print:hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-emerald-400" />
+                      <span>Gerador de Relatórios de Evolução</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Selecione um intervalo de datas para gerar um sumário executivo, imprimir em PDF ou exportar CSV.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => exportReportToCsv(generatedReport)}
+                      className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5"
+                      title="Exportar para planilha CSV (compatível com Excel)"
+                    >
+                      <Download className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Exportar CSV</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                      title="Imprimir ou Salvar em PDF pelo navegador"
+                    >
+                      <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Imprimir / Salvar PDF</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preset shortcuts */}
+                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-800">
+                  <span className="text-xs text-slate-400 font-medium">Períodos pré-definidos:</span>
+                  {[
+                    { key: '30d' as const, label: 'Últimos 30 dias' },
+                    { key: '90d' as const, label: 'Últimos 90 dias' },
+                    { key: 'year' as const, label: 'Ano Atual' },
+                    { key: 'all' as const, label: 'Histórico Completo' }
+                  ].map(p => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => handleApplyReportPreset(p.key)}
+                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-950 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/40 transition-colors"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+
+                  <div className="ml-auto flex items-center gap-2 mt-2 sm:mt-0">
+                    <input
+                      type="date"
+                      value={reportStartDate}
+                      onChange={e => setReportStartDate(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs text-slate-500">até</span>
+                    <input
+                      type="date"
+                      value={reportEndDate}
+                      onChange={e => setReportEndDate(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Printable Report Document Card */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 print:bg-white print:text-black print:border-none print:p-0">
+                {/* Report Header */}
+                <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-100 font-display">
+                      Relatório de Evolução Corporal
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Período avaliado: <strong>{formatDateBR(generatedReport.startDate)}</strong> até <strong>{formatDateBR(generatedReport.endDate)}</strong>
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    <div>FitHome · Treinos em Casa</div>
+                    <div>{generatedReport.totalWeights} pesagens · {generatedReport.totalMeasurements} sessões de medidas</div>
+                  </div>
+                </div>
+
+                {/* Weight & BMI Indicators */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-500 block mb-1">Peso no Início</span>
+                    <span className="text-xl font-bold text-slate-200 tabular-nums">
+                      {generatedReport.initialWeight !== undefined ? `${generatedReport.initialWeight} kg` : 'Sem registro'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-500 block mb-1">Peso no Final</span>
+                    <span className="text-xl font-bold text-slate-100 tabular-nums">
+                      {generatedReport.finalWeight !== undefined ? `${generatedReport.finalWeight} kg` : 'Sem registro'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-500 block mb-1">Variação no Período</span>
+                    <span className="text-xl font-bold text-slate-100 tabular-nums">
+                      {generatedReport.weightDelta !== undefined ? (
+                        <span className={generatedReport.weightDelta < 0 ? 'text-emerald-400' : 'text-sky-400'}>
+                          {generatedReport.weightDelta > 0 ? `+${generatedReport.weightDelta}` : generatedReport.weightDelta} kg
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </span>
+                    {generatedReport.weightDeltaPct !== undefined && (
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        ({generatedReport.weightDeltaPct}%)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-500 block mb-1">IMC (Início → Final)</span>
+                    <span className="text-base font-bold text-slate-200 tabular-nums">
+                      {generatedReport.initialBmi && generatedReport.finalBmi
+                        ? `${generatedReport.initialBmi} → ${generatedReport.finalBmi}`
+                        : generatedReport.finalBmi
+                        ? `${generatedReport.finalBmi}`
+                        : 'Não calculado'}
+                    </span>
+                    {generatedReport.finalBmiLabel && (
+                      <span className="text-[10px] text-emerald-400 block mt-0.5 truncate">
+                        {generatedReport.finalBmiLabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Measurements Evolution Table */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+                    Evolução das Medidas Corporais no Período
+                  </h4>
+
+                  {generatedReport.measurementsComparison.length === 0 ? (
+                    <div className="text-center py-6 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-slate-800">
+                      Nenhuma medida registrada no período selecionado.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400">
+                            <th className="py-2 px-3 font-semibold">Região</th>
+                            <th className="py-2 px-3 font-semibold">Medida Inicial</th>
+                            <th className="py-2 px-3 font-semibold">Medida Final</th>
+                            <th className="py-2 px-3 font-semibold">Diferença</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {generatedReport.measurementsComparison.map(m => (
+                            <tr key={m.key} className="hover:bg-slate-950/30">
+                              <td className="py-2.5 px-3 font-bold text-slate-200">{m.name}</td>
+                              <td className="py-2.5 px-3 font-mono text-slate-300">
+                                {m.initialVal !== undefined ? `${m.initialVal} cm` : '—'}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-slate-100 font-semibold">
+                                {m.finalVal !== undefined ? `${m.finalVal} cm` : '—'}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono font-bold">
+                                {m.diff !== undefined ? (
+                                  <span className={m.diff < 0 ? 'text-emerald-400' : m.diff > 0 ? 'text-sky-400' : 'text-slate-400'}>
+                                    {m.diff > 0 ? `+${m.diff}` : m.diff} cm
+                                  </span>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Milestones Achieved In Period */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+                    Marcos Conquistados no Período ({generatedReport.milestonesInPeriod.length})
+                  </h4>
+
+                  {generatedReport.milestonesInPeriod.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic">
+                      Nenhum marco alcançado durante o intervalo de datas selecionado.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {generatedReport.milestonesInPeriod.map(ms => (
+                        <div key={ms.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="font-bold text-slate-200">{ms.title}</span>
+                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                              {formatDateBR(ms.date)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400">{ms.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: COMPARAÇÃO POR PERÍODO / DUAS DATAS */}
+          {activeSubTab === 'comparacao' && (
+            <div className="space-y-6">
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm">
+                <div className="mb-6">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <ArrowLeftRight className="w-5 h-5 text-emerald-400" />
+                    <span>Comparação Entre Duas Datas Específicas</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Selecione duas datas para comparar peso e medidas corporais lado a lado com diferenças exatas.
+                  </p>
+                </div>
+
+                {allRecordedDates.length < 2 ? (
+                  <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                    É necessário ter registros em pelo menos duas datas diferentes para realizar comparações.
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                      <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                        <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                          Data 1 (Ponto de Partida / Referência)
+                        </label>
+                        <select
+                          value={compareDateA}
+                          onChange={e => setCompareDateA(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        >
+                          {allRecordedDates.map(d => (
+                            <option key={d} value={d}>
+                              {formatDateBR(d)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                        <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                          Data 2 (Ponto Atual / Comparação)
+                        </label>
+                        <select
+                          value={compareDateB}
+                          onChange={e => setCompareDateB(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        >
+                          {allRecordedDates.map(d => (
+                            <option key={d} value={d}>
+                              {formatDateBR(d)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {periodComparisonData && (
+                      <div className="space-y-6">
+                        <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 sm:p-5">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="font-bold text-sm text-slate-200 flex items-center gap-1.5">
+                              <Scale className="w-4 h-4 text-emerald-400" /> Comparação de Peso
+                            </span>
+                            {periodComparisonData.weightDeltaComp !== undefined && (
+                              <span
+                                className={`text-xs font-bold px-2.5 py-1 rounded-lg tabular-nums ${
+                                  periodComparisonData.weightDeltaComp < 0
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    : periodComparisonData.weightDeltaComp > 0
+                                    ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                                    : 'bg-slate-800 text-slate-300'
+                                }`}
+                              >
+                                {periodComparisonData.weightDeltaComp > 0
+                                  ? `+${periodComparisonData.weightDeltaComp}`
+                                  : periodComparisonData.weightDeltaComp}{' '}
+                                kg ({periodComparisonData.weightDeltaCompPct}%)
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-800/80">
+                            <div>
+                              <span className="text-[11px] text-slate-500 block">
+                                {formatDateBR(periodComparisonData.dateA)}
+                              </span>
+                              <span className="text-xl font-bold text-slate-100 tabular-nums">
+                                {periodComparisonData.weightA !== undefined
+                                  ? `${periodComparisonData.weightA} kg`
+                                  : 'Sem registro'}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[11px] text-slate-500 block">
+                                {formatDateBR(periodComparisonData.dateB)}
+                              </span>
+                              <span className="text-xl font-bold text-slate-100 tabular-nums">
+                                {periodComparisonData.weightB !== undefined
+                                  ? `${periodComparisonData.weightB} kg`
+                                  : 'Sem registro'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+                            Medidas Corporais ({formatDateBR(compareDateA)} vs {formatDateBR(compareDateB)})
+                          </h4>
+
+                          {periodComparisonData.regionsComparison.length === 0 ? (
+                            <div className="text-center py-6 text-slate-500 text-xs">
+                              Nenhuma medida registrada em nenhuma das duas datas selecionadas.
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {periodComparisonData.regionsComparison.map(r => (
+                                <div
+                                  key={r.key}
+                                  className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="font-bold text-xs text-slate-200">
+                                      {r.name}
+                                    </span>
+                                    {r.diff !== undefined ? (
+                                      <span
+                                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md tabular-nums ${
+                                          r.diff < 0
+                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                            : r.diff > 0
+                                            ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                                            : 'bg-slate-800 text-slate-400'
+                                        }`}
+                                      >
+                                        {r.diff > 0 ? `+${r.diff}` : r.diff} cm
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-500 italic">
+                                        Não comparável
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60">
+                                    <div>
+                                      <span className="text-[10px] text-slate-500 block">Ponto A:</span>
+                                      <span className="font-semibold text-slate-300 tabular-nums">
+                                        {r.valA !== undefined ? `${r.valA} cm` : '—'}
+                                      </span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-[10px] text-slate-500 block">Ponto B:</span>
+                                      <span className="font-bold text-slate-100 tabular-nums">
+                                        {r.valB !== undefined ? `${r.valB} cm` : '—'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: HISTÓRICO CRONOLÓGICO */}
           {activeSubTab === 'historico' && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -969,7 +1910,6 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   Linha do Tempo dos Registros
                 </h3>
 
-                {/* Filter by Type */}
                 <div className="flex items-center gap-1.5 text-xs">
                   <span className="text-slate-500 font-medium">Filtrar:</span>
                   <div className="flex items-center gap-1 p-1 bg-slate-900 border border-slate-800 rounded-xl">
@@ -1060,7 +2000,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                             <button
                               type="button"
                               onClick={() => {
-                                if (confirm(`Deseja excluir a pesagem de ${w.weightKg} kg do dia ${formatDateBR(w.date)}?`)) {
+                                if (
+                                  confirm(
+                                    `Deseja excluir a pesagem de ${w.weightKg} kg do dia ${formatDateBR(w.date)}?`
+                                  )
+                                ) {
                                   onDeleteWeight(w.id);
                                 }
                               }}
@@ -1077,7 +2021,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     if (item.type === 'measurement' && item.measurementEntry) {
                       const m = item.measurementEntry;
                       const measureEntries = Object.entries(m.measurements).filter(
-                        ([, v]) => v !== undefined
+                        ([, v]) => v !== undefined && v > 0
                       ) as [MeasurementKey, number][];
 
                       return (
@@ -1122,7 +2066,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (confirm(`Deseja excluir as medidas do dia ${formatDateBR(m.date)}?`)) {
+                                  if (
+                                    confirm(
+                                      `Deseja excluir as medidas do dia ${formatDateBR(m.date)}?`
+                                    )
+                                  ) {
                                     onDeleteMeasurement(m.id);
                                   }
                                 }}
@@ -1134,7 +2082,6 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                             </div>
                           </div>
 
-                          {/* Pill badges with filled measurements */}
                           <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-800/60">
                             {measureEntries.map(([k, val]) => (
                               <div
@@ -1157,7 +2104,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             </div>
           )}
 
-          {/* TAB 4: FOTOS DE PROGRESSO */}
+          {/* TAB 8: FOTOS DE PROGRESSO */}
           {activeSubTab === 'fotos' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1167,7 +2114,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     <span>Galeria de Fotos Corporais</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Fotos salvas 100% no seu navegador de forma privada e segura.
+                    Fotos armazenadas de forma 100% privada e local no seu navegador.
                   </p>
                 </div>
 

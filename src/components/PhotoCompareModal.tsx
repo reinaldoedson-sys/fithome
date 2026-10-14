@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ProgressPhoto } from '../types/bodyEvolution';
+import { formatDateBR } from '../utils/bodyDateUtils';
 import { X, ArrowLeftRight } from 'lucide-react';
 
 interface PhotoCompareModalProps {
@@ -11,10 +12,10 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
   photos,
   onClose
 }) => {
-  // Sort photos chronologically
-  const sortedPhotos = [...photos].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  // Sort photos chronologically (oldest to newest)
+  const sortedPhotos = [...photos].sort((a, b) => {
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
 
   const [photoAId, setPhotoAId] = useState<string>(
     sortedPhotos[0]?.id || ''
@@ -25,15 +26,6 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
 
   const photoA = sortedPhotos.find(p => p.id === photoAId);
   const photoB = sortedPhotos.find(p => p.id === photoBId);
-
-  const formatDate = (dateStr: string) => {
-    try {
-      const [year, month, day] = dateStr.split('-');
-      return `${day}/${month}/${year}`;
-    } catch {
-      return dateStr;
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -48,7 +40,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
                 Comparação Lado a Lado de Fotos
               </h3>
               <p className="text-xs text-slate-400">
-                Selecione duas datas para visualizar sua transformação física.
+                Selecione dois momentos para visualizar sua transformação física.
               </p>
             </div>
           </div>
@@ -74,7 +66,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             >
               {sortedPhotos.map(p => (
                 <option key={p.id} value={p.id}>
-                  {formatDate(p.date)} - {p.category ? p.category.toUpperCase() : 'Geral'} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
+                  {formatDateBR(p.date)} - {(p.category || 'Geral').toUpperCase()} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
                 </option>
               ))}
             </select>
@@ -91,7 +83,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             >
               {sortedPhotos.map(p => (
                 <option key={p.id} value={p.id}>
-                  {formatDate(p.date)} - {p.category ? p.category.toUpperCase() : 'Geral'} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
+                  {formatDateBR(p.date)} - {(p.category || 'Geral').toUpperCase()} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
                 </option>
               ))}
             </select>
@@ -105,7 +97,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             <div>
               <div className="flex items-center justify-between text-xs mb-2">
                 <span className="font-bold text-slate-200">
-                  {photoA ? formatDate(photoA.date) : '-'}
+                  {photoA ? formatDateBR(photoA.date) : '-'}
                 </span>
                 <span className="capitalize text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   {photoA?.category || 'Geral'}
@@ -135,7 +127,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             <div>
               <div className="flex items-center justify-between text-xs mb-2">
                 <span className="font-bold text-slate-200">
-                  {photoB ? formatDate(photoB.date) : '-'}
+                  {photoB ? formatDateBR(photoB.date) : '-'}
                 </span>
                 <span className="capitalize text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                   {photoB?.category || 'Geral'}

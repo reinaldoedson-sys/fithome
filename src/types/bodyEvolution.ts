@@ -36,6 +36,7 @@ export interface BodyGoal {
   targetWeightKg?: number;
   targetDate?: string;
   customInitialWeightKg?: number; // Optional override for reference baseline
+  heightCm?: number; // User height in centimeters (e.g. 175)
   notes?: string;
 }
 
@@ -63,3 +64,61 @@ export const MEASUREMENT_LABELS: Record<MeasurementKey, { name: string; short: s
   panturrilhaEsquerda: { name: 'Panturrilha Esquerda', short: 'Panturr. Esq.' },
   panturrilhaDireita: { name: 'Panturrilha Direita', short: 'Panturr. Dir.' }
 };
+
+// --- IMC (Índice de Massa Corporal) ---
+export type BmiClassification =
+  | 'abaixo_peso'
+  | 'normal'
+  | 'sobrepeso'
+  | 'obesidade_1'
+  | 'obesidade_2'
+  | 'obesidade_3';
+
+export interface BmiInfo {
+  bmi: number;
+  classification: BmiClassification;
+  label: string;
+  description: string;
+  color: string;
+  healthyWeightRange: { minKg: number; maxKg: number };
+}
+
+// --- Marcos de Progresso Automáticos ---
+export interface ProgressMilestone {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  type:
+    | 'first_weight'
+    | 'lowest_weight'
+    | 'weight_loss_milestone'
+    | 'goal_reached'
+    | 'measurement_drop';
+  badge: string;
+  valueLabel?: string;
+}
+
+// --- Relatório de Evolução ---
+export interface EvolutionReport {
+  startDate: string;
+  endDate: string;
+  totalWeights: number;
+  totalMeasurements: number;
+  initialWeight?: number;
+  finalWeight?: number;
+  weightDelta?: number;
+  weightDeltaPct?: number;
+  initialBmi?: number;
+  finalBmi?: number;
+  initialBmiLabel?: string;
+  finalBmiLabel?: string;
+  measurementsComparison: Array<{
+    key: MeasurementKey;
+    name: string;
+    initialVal?: number;
+    finalVal?: number;
+    diff?: number;
+  }>;
+  milestonesInPeriod: ProgressMilestone[];
+}

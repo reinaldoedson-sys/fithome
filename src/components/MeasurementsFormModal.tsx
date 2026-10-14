@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MeasurementEntry, BodyMeasurements, MEASUREMENT_LABELS, MeasurementKey } from '../types/bodyEvolution';
-import { X, Ruler, Trash2 } from 'lucide-react';
+import { getTodayDateString, parseDecimalInput, formatDateBR } from '../utils/bodyDateUtils';
+import { X, Ruler, Trash2, AlertCircle } from 'lucide-react';
 
 interface MeasurementsFormModalProps {
   initialEntry?: MeasurementEntry | null;
@@ -19,14 +20,14 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
     if (initialEntry?.date) {
       return initialEntry.date.split('T')[0];
     }
-    return new Date().toISOString().split('T')[0];
+    return getTodayDateString();
   });
 
   const [measurements, setMeasurements] = useState<Record<MeasurementKey, string>>(() => {
     const state: Record<string, string> = {};
     (Object.keys(MEASUREMENT_LABELS) as MeasurementKey[]).forEach(k => {
       const existingVal = initialEntry?.measurements?.[k];
-      state[k] = existingVal !== undefined ? String(existingVal) : '';
+      state[k] = existingVal !== undefined ? String(existingVal).replace('.', ',') : '';
     });
     return state as Record<MeasurementKey, string>;
   });
@@ -50,23 +51,30 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
       return;
     }
 
-    // Build measurements object with only filled valid numbers
     const validMeasurements: BodyMeasurements = {};
     let atLeastOneFilled = false;
+    let invalidFieldName: string | null = null;
 
     (Object.keys(measurements) as MeasurementKey[]).forEach(k => {
-      const raw = measurements[k].trim().replace(',', '.');
+      const raw = measurements[k].trim();
       if (raw !== '') {
-        const val = parseFloat(raw);
-        if (!isNaN(val) && val > 0) {
+        const val = parseDecimalInput(raw);
+        if (val === null || val <= 0 || val < 5 || val > 300) {
+          invalidFieldName = MEASUREMENT_LABELS[k].name;
+        } else {
           validMeasurements[k] = Number(val.toFixed(1));
           atLeastOneFilled = true;
         }
       }
     });
 
+    if (invalidFieldName) {
+      setError(`O valor informado para "${invalidFieldName}" é inválido. Digite um número entre 5 e 300 cm.`);
+      return;
+    }
+
     if (!atLeastOneFilled) {
-      setError('Preencha ao menos uma medida corporal para salvar.');
+      setError('Preencha ao menos uma medida corporal para salvar o registro.');
       return;
     }
 
@@ -93,7 +101,7 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
                 {initialEntry ? 'Editar Medidas Corporais' : 'Registrar Medidas Corporais'}
               </h3>
               <p className="text-xs text-slate-400">
-                Preencha apenas as regiões que você deseja registrar hoje (em cm).
+                Preencha apenas as regiões que você deseja acompanhar hoje (aceita vírgula ou ponto).
               </p>
             </div>
           </div>
@@ -107,8 +115,9 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-3 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs shrink-0">
-            {error}
+          <div className="mb-3 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs shrink-0 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -121,6 +130,7 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
               <input
                 type="date"
                 value={date}
+                max={getTodayDateString()}
                 onChange={e => setDate(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 required
@@ -129,22 +139,27 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
           </div>
 
           <div>
-            <span className="block text-xs font-semibold text-slate-300 mb-2">
-              Medidas Corporais (cm)
-            </span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-300">
+                Medidas Corporais (cm)
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Campos não preenchidos serão mantidos em branco
+              </span>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {(Object.keys(MEASUREMENT_LABELS) as MeasurementKey[]).map(key => (
                 <div key={key} className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5">
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1 truncate">
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1 truncate" title={MEASUREMENT_LABELS[key].name}>
                     {MEASUREMENT_LABELS[key].name}
                   </label>
                   <div className="relative">
                     <input
-                      type="number"
-                      step="0.5"
-                      min="5"
-                      max="300"
-                      placeholder="0.0"
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]*[.,]?[0-9]*"
+                      placeholder="Ex: 82,5"
                       value={measurements[key]}
                       onChange={e => handleFieldChange(key, e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700/80 rounded-lg py-1 px-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 tabular-nums pr-8"
@@ -164,7 +179,7 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
             </label>
             <textarea
               rows={2}
-              placeholder="Ex: Medido pela manhã, fita métrica relaxada sem apertar..."
+              placeholder="Ex: Fita métrica alinhada pela cicatriz umbilical, medição relaxada..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -176,7 +191,7 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm('Deseja realmente excluir este registro de medidas?')) {
+                  if (confirm(`Deseja realmente excluir as medidas registradas em ${formatDateBR(initialEntry.date)}?`)) {
                     onDelete(initialEntry.id);
                   }
                 }}
