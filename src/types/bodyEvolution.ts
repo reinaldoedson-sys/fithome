@@ -103,12 +103,15 @@ export interface ProgressMilestone {
 export interface EvolutionReport {
   startDate: string;
   endDate: string;
+  isValidDateRange: boolean;
+  dateRangeError?: string;
   totalWeights: number;
   totalMeasurements: number;
   initialWeight?: number;
   finalWeight?: number;
-  weightDelta?: number;
-  weightDeltaPct?: number;
+  weightDelta?: number; // defined only if at least 2 distinct entries in period
+  weightDeltaPct?: number; // defined only if at least 2 distinct entries in period
+  hasWeightComparison: boolean;
   initialBmi?: number;
   finalBmi?: number;
   initialBmiLabel?: string;
@@ -119,6 +122,8 @@ export interface EvolutionReport {
     initialVal?: number;
     finalVal?: number;
     diff?: number;
+    hasComparison: boolean;
   }>;
   milestonesInPeriod: ProgressMilestone[];
 }
+

@@ -1586,120 +1586,142 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
               {/* Printable Report Document Card */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 print:bg-white print:text-black print:border-none print:p-0">
-                {/* Report Header */}
-                <div className="flex items-start justify-between border-b border-slate-800 pb-4">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-100 font-display">
-                      Relatório de Evolução Corporal
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Período avaliado: <strong>{formatDateBR(generatedReport.startDate)}</strong> até <strong>{formatDateBR(generatedReport.endDate)}</strong>
-                    </p>
+                {!generatedReport.isValidDateRange ? (
+                  <div className="p-6 text-center text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <p className="font-bold text-sm mb-1">Intervalo de Datas Inválido</p>
+                    <p className="text-xs text-slate-400">{generatedReport.dateRangeError || 'A data inicial não pode ser posterior à data final.'}</p>
                   </div>
-                  <div className="text-right text-xs text-slate-500">
-                    <div>FitHome · Treinos em Casa</div>
-                    <div>{generatedReport.totalWeights} pesagens · {generatedReport.totalMeasurements} sessões de medidas</div>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Report Header */}
+                    <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+                      <div>
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-100 font-display">
+                          Relatório de Evolução Corporal
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Período avaliado: <strong>{formatDateBR(generatedReport.startDate)}</strong> até <strong>{formatDateBR(generatedReport.endDate)}</strong>
+                        </p>
+                      </div>
+                      <div className="text-right text-xs text-slate-500">
+                        <div>FitHome · Treinos em Casa</div>
+                        <div>{generatedReport.totalWeights} pesagens · {generatedReport.totalMeasurements} sessões de medidas</div>
+                      </div>
+                    </div>
 
-                {/* Weight & BMI Indicators */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-500 block mb-1">Peso no Início</span>
-                    <span className="text-xl font-bold text-slate-200 tabular-nums">
-                      {generatedReport.initialWeight !== undefined ? `${generatedReport.initialWeight} kg` : 'Sem registro'}
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-500 block mb-1">Peso no Final</span>
-                    <span className="text-xl font-bold text-slate-100 tabular-nums">
-                      {generatedReport.finalWeight !== undefined ? `${generatedReport.finalWeight} kg` : 'Sem registro'}
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-500 block mb-1">Variação no Período</span>
-                    <span className="text-xl font-bold text-slate-100 tabular-nums">
-                      {generatedReport.weightDelta !== undefined ? (
-                        <span className={generatedReport.weightDelta < 0 ? 'text-emerald-400' : 'text-sky-400'}>
-                          {generatedReport.weightDelta > 0 ? `+${generatedReport.weightDelta}` : generatedReport.weightDelta} kg
+                    {/* Weight & BMI Indicators */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                        <span className="text-[11px] text-slate-500 block mb-1">Peso no Início</span>
+                        <span className="text-xl font-bold text-slate-200 tabular-nums">
+                          {generatedReport.initialWeight !== undefined ? `${generatedReport.initialWeight} kg` : 'Sem registro'}
                         </span>
+                      </div>
+
+                      <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                        <span className="text-[11px] text-slate-500 block mb-1">Peso no Final</span>
+                        <span className="text-xl font-bold text-slate-100 tabular-nums">
+                          {generatedReport.finalWeight !== undefined ? `${generatedReport.finalWeight} kg` : 'Sem registro'}
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                        <span className="text-[11px] text-slate-500 block mb-1">Variação no Período</span>
+                        {generatedReport.hasWeightComparison && generatedReport.weightDelta !== undefined ? (
+                          <>
+                            <span className="text-xl font-bold text-slate-100 tabular-nums">
+                              {generatedReport.weightDelta === 0 ? (
+                                <span className="text-slate-300">0,0 kg</span>
+                              ) : (
+                                <span className={generatedReport.weightDelta < 0 ? 'text-emerald-400' : 'text-sky-400'}>
+                                  {generatedReport.weightDelta > 0 ? `+${generatedReport.weightDelta}` : generatedReport.weightDelta} kg
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-[11px] text-slate-400 block mt-0.5">
+                              {generatedReport.weightDelta === 0 ? '(Estável)' : `(${generatedReport.weightDeltaPct}%)`}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs font-semibold text-slate-400 block mt-1">
+                              {generatedReport.totalWeights === 1 ? 'Apenas 1 pesagem' : 'Sem registros'}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">
+                              {generatedReport.totalWeights === 1 ? 'Comparação indisponível' : '—'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+                        <span className="text-[11px] text-slate-500 block mb-1">IMC (Início → Final)</span>
+                        <span className="text-base font-bold text-slate-200 tabular-nums">
+                          {generatedReport.initialBmi && generatedReport.finalBmi
+                            ? `${generatedReport.initialBmi} → ${generatedReport.finalBmi}`
+                            : generatedReport.finalBmi
+                            ? `${generatedReport.finalBmi}`
+                            : 'Não calculado'}
+                        </span>
+                        {generatedReport.finalBmiLabel && (
+                          <span className="text-[10px] text-emerald-400 block mt-0.5 truncate">
+                            {generatedReport.finalBmiLabel}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Measurements Evolution Table */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+                        Evolução das Medidas Corporais no Período
+                      </h4>
+
+                      {generatedReport.measurementsComparison.length === 0 ? (
+                        <div className="text-center py-6 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-slate-800">
+                          Nenhuma medida registrada no período selecionado.
+                        </div>
                       ) : (
-                        '—'
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs text-left">
+                            <thead>
+                              <tr className="border-b border-slate-800 text-slate-400">
+                                <th className="py-2 px-3 font-semibold">Região</th>
+                                <th className="py-2 px-3 font-semibold">Medida Inicial</th>
+                                <th className="py-2 px-3 font-semibold">Medida Final</th>
+                                <th className="py-2 px-3 font-semibold">Diferença</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60">
+                              {generatedReport.measurementsComparison.map(m => (
+                                <tr key={m.key} className="hover:bg-slate-950/30">
+                                  <td className="py-2.5 px-3 font-bold text-slate-200">{m.name}</td>
+                                  <td className="py-2.5 px-3 font-mono text-slate-300">
+                                    {m.initialVal !== undefined ? `${m.initialVal} cm` : '—'}
+                                  </td>
+                                  <td className="py-2.5 px-3 font-mono text-slate-100 font-semibold">
+                                    {m.finalVal !== undefined ? `${m.finalVal} cm` : '—'}
+                                  </td>
+                                  <td className="py-2.5 px-3 font-mono font-bold">
+                                    {m.hasComparison && m.diff !== undefined ? (
+                                      <span className={m.diff < 0 ? 'text-emerald-400' : m.diff > 0 ? 'text-sky-400' : 'text-slate-400'}>
+                                        {m.diff === 0 ? '0,0 cm (Estável)' : `${m.diff > 0 ? `+${m.diff}` : m.diff} cm`}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-500 text-[11px] font-normal">
+                                        Indisponível (1 medição)
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
-                    </span>
-                    {generatedReport.weightDeltaPct !== undefined && (
-                      <span className="text-[11px] text-slate-400 block mt-0.5">
-                        ({generatedReport.weightDeltaPct}%)
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-500 block mb-1">IMC (Início → Final)</span>
-                    <span className="text-base font-bold text-slate-200 tabular-nums">
-                      {generatedReport.initialBmi && generatedReport.finalBmi
-                        ? `${generatedReport.initialBmi} → ${generatedReport.finalBmi}`
-                        : generatedReport.finalBmi
-                        ? `${generatedReport.finalBmi}`
-                        : 'Não calculado'}
-                    </span>
-                    {generatedReport.finalBmiLabel && (
-                      <span className="text-[10px] text-emerald-400 block mt-0.5 truncate">
-                        {generatedReport.finalBmiLabel}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Measurements Evolution Table */}
-                <div>
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-                    Evolução das Medidas Corporais no Período
-                  </h4>
-
-                  {generatedReport.measurementsComparison.length === 0 ? (
-                    <div className="text-center py-6 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-slate-800">
-                      Nenhuma medida registrada no período selecionado.
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400">
-                            <th className="py-2 px-3 font-semibold">Região</th>
-                            <th className="py-2 px-3 font-semibold">Medida Inicial</th>
-                            <th className="py-2 px-3 font-semibold">Medida Final</th>
-                            <th className="py-2 px-3 font-semibold">Diferença</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {generatedReport.measurementsComparison.map(m => (
-                            <tr key={m.key} className="hover:bg-slate-950/30">
-                              <td className="py-2.5 px-3 font-bold text-slate-200">{m.name}</td>
-                              <td className="py-2.5 px-3 font-mono text-slate-300">
-                                {m.initialVal !== undefined ? `${m.initialVal} cm` : '—'}
-                              </td>
-                              <td className="py-2.5 px-3 font-mono text-slate-100 font-semibold">
-                                {m.finalVal !== undefined ? `${m.finalVal} cm` : '—'}
-                              </td>
-                              <td className="py-2.5 px-3 font-mono font-bold">
-                                {m.diff !== undefined ? (
-                                  <span className={m.diff < 0 ? 'text-emerald-400' : m.diff > 0 ? 'text-sky-400' : 'text-slate-400'}>
-                                    {m.diff > 0 ? `+${m.diff}` : m.diff} cm
-                                  </span>
-                                ) : (
-                                  '—'
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                  </>
+                )}
 
                 {/* Milestones Achieved In Period */}
                 <div>

@@ -73,11 +73,37 @@ export function getPeriodCutoffDate(period: '30d' | '3m' | '6m' | '1y' | 'all'):
   return cutoff;
 }
 
-// Parse decimal input accepting either comma or dot
-export function parseDecimalInput(input: string): number | null {
-  if (!input) return null;
-  const normalized = input.trim().replace(',', '.');
-  const val = parseFloat(normalized);
-  if (isNaN(val)) return null;
+/**
+ * Strict decimal input parser.
+ * Accepts numbers written with either dot or comma (e.g. "75", "75.5", "75,5", "0.8", ",8", ".8").
+ * Strictly rejects partially invalid inputs (e.g. "12.34.56", "75.2abc", "12,34,56", "12e5", "abc", "-10").
+ */
+export function parseDecimalInput(input: unknown): number | null {
+  if (typeof input !== 'string') {
+    if (typeof input === 'number' && Number.isFinite(input) && !Number.isNaN(input) && input >= 0) {
+      return input;
+    }
+    return null;
+  }
+
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // Strict regex:
+  // - digits only: "75"
+  // - digits + separator + digits: "75.5" or "75,5"
+  // - separator + digits: ".5" or ",5"
+  const strictDecimalPattern = /^(?:\d+(?:[.,]\d+)?|[.,]\d+)$/;
+  if (!strictDecimalPattern.test(trimmed)) {
+    return null;
+  }
+
+  const normalized = trimmed.replace(',', '.');
+  const val = Number(normalized);
+
+  if (!Number.isFinite(val) || Number.isNaN(val) || val < 0) {
+    return null;
+  }
+
   return val;
 }
