@@ -50,18 +50,14 @@ import {
   Loader2,
   AlertCircle
 } from 'lucide-react';
+import {
+  hasCategoryMigrated,
+  markCategoryMigrated
+} from './utils/migrationUtils';
 
 // Helper to scope localStorage by user ID or 'guest'
 function getStorageKey(key: string, uid?: string | null): string {
   return uid ? `fithome_user_${uid}_${key}` : `fithome_guest_${key}`;
-}
-
-function hasUserMigrated(uid: string): boolean {
-  return localStorage.getItem(`fithome_migrated_${uid}`) === 'true';
-}
-
-function markUserMigrated(uid: string): void {
-  localStorage.setItem(`fithome_migrated_${uid}`, 'true');
 }
 
 function loadInitial<T>(key: string, fallback: T): T {
@@ -218,18 +214,19 @@ export default function App() {
         let weightsInitialHandled = false;
         let measurementsInitialHandled = false;
         let recordsInitialHandled = false;
+        let goalInitialHandled = false;
 
-        // 1. Subscribe to live workouts
+        // 1. Subscribe to live workouts (Independent category: workouts)
         const unsubWorkouts = subscribeUserWorkouts(currentUser.uid, remoteWorkouts => {
-          const isMigrated = hasUserMigrated(currentUser.uid);
+          const isMigrated = hasCategoryMigrated(currentUser.uid, 'workouts');
 
           if (remoteWorkouts && remoteWorkouts.length > 0) {
             setSessions(remoteWorkouts);
-            markUserMigrated(currentUser.uid);
+            markCategoryMigrated(currentUser.uid, 'workouts');
           } else if (!isMigrated && !workoutsInitialHandled) {
             workoutsInitialHandled = true;
             // One-time guest migration if cloud is empty on first snapshot
-            const guestSessions = localStorage.getItem('fithome_guest_user_sessions');
+            const guestSessions = localStorage.getItem('fithome_guest_user_sessions') || localStorage.getItem('fithome_user_sessions');
             if (guestSessions) {
               try {
                 const parsed = JSON.parse(guestSessions);
@@ -245,6 +242,7 @@ export default function App() {
             } else {
               setSessions([]);
             }
+            markCategoryMigrated(currentUser.uid, 'workouts');
           } else {
             // Authorized state: collection was cleared / user deleted all records
             setSessions([]);
@@ -253,13 +251,13 @@ export default function App() {
         });
         unsubs.push(unsubWorkouts);
 
-        // 2. Subscribe to live weights
+        // 2. Subscribe to live weights (Independent category: weights)
         const unsubWeights = subscribeUserWeights(currentUser.uid, remoteWeights => {
-          const isMigrated = hasUserMigrated(currentUser.uid);
+          const isMigrated = hasCategoryMigrated(currentUser.uid, 'weights');
 
           if (remoteWeights && remoteWeights.length > 0) {
             setBodyWeights(remoteWeights);
-            markUserMigrated(currentUser.uid);
+            markCategoryMigrated(currentUser.uid, 'weights');
           } else if (!isMigrated && !weightsInitialHandled) {
             weightsInitialHandled = true;
             const guestWeights = localStorage.getItem('fithome_guest_body_weights_v1') || localStorage.getItem('fithome_body_weights_v1');
@@ -278,6 +276,7 @@ export default function App() {
             } else {
               setBodyWeights([]);
             }
+            markCategoryMigrated(currentUser.uid, 'weights');
           } else {
             setBodyWeights([]);
           }
@@ -285,13 +284,13 @@ export default function App() {
         });
         unsubs.push(unsubWeights);
 
-        // 3. Subscribe to live measurements
+        // 3. Subscribe to live measurements (Independent category: measurements)
         const unsubMeasurements = subscribeUserMeasurements(currentUser.uid, remoteMeasures => {
-          const isMigrated = hasUserMigrated(currentUser.uid);
+          const isMigrated = hasCategoryMigrated(currentUser.uid, 'measurements');
 
           if (remoteMeasures && remoteMeasures.length > 0) {
             setBodyMeasurements(remoteMeasures);
-            markUserMigrated(currentUser.uid);
+            markCategoryMigrated(currentUser.uid, 'measurements');
           } else if (!isMigrated && !measurementsInitialHandled) {
             measurementsInitialHandled = true;
             const guestMeasures = localStorage.getItem('fithome_guest_body_measurements_v1') || localStorage.getItem('fithome_body_measurements_v1');
@@ -310,6 +309,7 @@ export default function App() {
             } else {
               setBodyMeasurements([]);
             }
+            markCategoryMigrated(currentUser.uid, 'measurements');
           } else {
             setBodyMeasurements([]);
           }
@@ -317,21 +317,62 @@ export default function App() {
         });
         unsubs.push(unsubMeasurements);
 
-        // 4. Subscribe to live body goal
+        // 4. Subscribe to live body goal (Independent category: goals)
         const unsubGoal = subscribeUserGoal(currentUser.uid, remoteGoal => {
-          if (remoteGoal && Object.keys(remoteGoal).length > 0) {
+          const isMigrated = hasCategoryMigrated(currentUser.uid, 'goals');
+          const hasRemoteGoal =
+            remoteGoal &&
+            typeof remoteGoal === 'object' &&
+            Object.keys(remoteGoal).length > 0 &&
+            (remoteGoal.targetWeightKg !== undefined ||
+              remoteGoal.customInitialWeightKg !== undefined ||
+              remoteGoal.heightCm !== undefined);
+
+          if (hasRemoteGoal) {
             setBodyGoal(remoteGoal);
+            markCategoryMigrated(currentUser.uid, 'goals');
+          } else if (!isMigrated && !goalInitialHandled) {
+            goalInitialHandled = true;
+            const guestGoalStr =
+              localStorage.getItem('fithome_guest_body_goal_v1') ||
+              localStorage.getItem('fithome_body_goal_v1');
+            if (guestGoalStr) {
+              try {
+                const parsed = JSON.parse(guestGoalStr);
+                if (
+                  parsed &&
+                  typeof parsed === 'object' &&
+                  Object.keys(parsed).length > 0 &&
+                  (parsed.targetWeightKg !== undefined ||
+                    parsed.customInitialWeightKg !== undefined ||
+                    parsed.heightCm !== undefined)
+                ) {
+                  saveUserGoalToFirestore(currentUser.uid, parsed);
+                  setBodyGoal(parsed);
+                } else {
+                  setBodyGoal({});
+                }
+              } catch {
+                setBodyGoal({});
+              }
+            } else {
+              setBodyGoal({});
+            }
+            markCategoryMigrated(currentUser.uid, 'goals');
+          } else {
+            setBodyGoal({});
           }
+          goalInitialHandled = true;
         });
         unsubs.push(unsubGoal);
 
-        // 5. Subscribe to live PRs
+        // 5. Subscribe to live PRs (Independent category: records)
         const unsubRecords = subscribeUserRecords(currentUser.uid, remoteRecords => {
-          const isMigrated = hasUserMigrated(currentUser.uid);
+          const isMigrated = hasCategoryMigrated(currentUser.uid, 'records');
 
           if (remoteRecords && remoteRecords.length > 0) {
             setPersonalRecords(remoteRecords);
-            markUserMigrated(currentUser.uid);
+            markCategoryMigrated(currentUser.uid, 'records');
           } else if (!isMigrated && !recordsInitialHandled) {
             recordsInitialHandled = true;
             const guestPRs = localStorage.getItem('fithome_guest_user_prs') || localStorage.getItem('fithome_user_prs');
@@ -350,15 +391,13 @@ export default function App() {
             } else {
               setPersonalRecords([]);
             }
+            markCategoryMigrated(currentUser.uid, 'records');
           } else {
             setPersonalRecords([]);
           }
           recordsInitialHandled = true;
         });
         unsubs.push(unsubRecords);
-
-        // Mark migration as done so future empty states do not re-inject old guest records
-        markUserMigrated(currentUser.uid);
       } else {
         // When logged out, reset memory state to guest cache
         setSessions(loadInitial('user_sessions', []));
@@ -659,11 +698,11 @@ export default function App() {
         const parsed = validation.data;
         let photoQuotaWarning = false;
 
-        // Atomic updates: All records verified valid
         if (parsed.sessions) {
           setSessions(parsed.sessions);
           if (user) {
             parsed.sessions.forEach((s: WorkoutSession) => saveUserWorkoutToFirestore(user.uid, s));
+            markCategoryMigrated(user.uid, 'workouts');
           }
         }
 
@@ -671,6 +710,7 @@ export default function App() {
           setPersonalRecords(parsed.personalRecords);
           if (user) {
             parsed.personalRecords.forEach((r: PersonalRecord) => saveUserRecordToFirestore(user.uid, r));
+            markCategoryMigrated(user.uid, 'records');
           }
         }
 
@@ -678,6 +718,7 @@ export default function App() {
           setBodyWeights(parsed.bodyWeights);
           if (user) {
             parsed.bodyWeights.forEach((w: WeightEntry) => saveUserWeightToFirestore(user.uid, w));
+            markCategoryMigrated(user.uid, 'weights');
           }
         }
 
@@ -685,6 +726,7 @@ export default function App() {
           setBodyMeasurements(parsed.bodyMeasurements);
           if (user) {
             parsed.bodyMeasurements.forEach((m: MeasurementEntry) => saveUserMeasurementToFirestore(user.uid, m));
+            markCategoryMigrated(user.uid, 'measurements');
           }
         }
 
@@ -692,6 +734,7 @@ export default function App() {
           setBodyGoal(parsed.bodyGoal);
           if (user) {
             saveUserGoalToFirestore(user.uid, parsed.bodyGoal);
+            markCategoryMigrated(user.uid, 'goals');
           }
         }
 
