@@ -33,10 +33,12 @@ import {
   subscribeUserGoal,
   saveUserGoalToFirestore,
   subscribeUserRecords,
-  saveUserRecordToFirestore
+  saveUserRecordToFirestore,
+  deleteUserRecordFromFirestore
 } from './lib/firestoreService';
 import { validateFitHomeBackup, FitHomeBackup } from './utils/backupValidator';
 import { RestoreConfirmModal } from './components/RestoreConfirmModal';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 import {
   handleCategorySnapshot,
   syncRestoredBackupToFirestore
@@ -127,6 +129,11 @@ export default function App() {
     loadInitial('body_photos_v1', [])
   );
 
+  // State for user custom routines
+  const [customRoutines, setCustomRoutines] = useState<RoutineTemplate[]>(() =>
+    loadInitial('custom_routines_v1', [])
+  );
+
   // LocalStorage synchronization effects (user-isolated offline cache)
   useEffect(() => {
     try {
@@ -182,6 +189,15 @@ export default function App() {
     }
   }, [bodyPhotos, user?.uid]);
 
+  useEffect(() => {
+    try {
+      const key = getStorageKey('custom_routines_v1', user?.uid);
+      localStorage.setItem(key, JSON.stringify(customRoutines));
+    } catch {
+      // ignore
+    }
+  }, [customRoutines, user?.uid]);
+
   // Firebase Realtime Subscriptions & User Lifecycle
   useEffect(() => {
     let unsubs: (() => void)[] = [];
@@ -218,6 +234,9 @@ export default function App() {
 
           const cachedPhotos = localStorage.getItem(getStorageKey('body_photos_v1', currentUser.uid));
           if (cachedPhotos) setBodyPhotos(JSON.parse(cachedPhotos));
+
+          const cachedRoutines = localStorage.getItem(getStorageKey('custom_routines_v1', currentUser.uid));
+          if (cachedRoutines) setCustomRoutines(JSON.parse(cachedRoutines));
         } catch {
           // ignore cache read error
         }
@@ -259,6 +278,7 @@ export default function App() {
         setBodyMeasurements(loadInitial('body_measurements_v1', []));
         setBodyGoal(loadInitial('body_goal_v1', {}));
         setBodyPhotos(loadInitial('body_photos_v1', []));
+        setCustomRoutines(loadInitial('custom_routines_v1', []));
       }
     });
 
@@ -378,9 +398,10 @@ export default function App() {
   };
 
   const handleClearHistory = () => {
-    sessions.forEach(s => {
-      if (user) deleteUserWorkoutFromFirestore(user.uid, s.id);
-    });
+    if (user) {
+      sessions.forEach(s => deleteUserWorkoutFromFirestore(user.uid, s.id));
+      personalRecords.forEach(pr => deleteUserRecordFromFirestore(user.uid, pr.exerciseId));
+    }
     setSessions([]);
     setPersonalRecords([]);
     try {
@@ -389,6 +410,8 @@ export default function App() {
     } catch {
       // ignore
     }
+    setSyncToast('Histórico de treinos e recordes apagado com sucesso.');
+    setTimeout(() => setSyncToast(null), 3000);
   };
 
   // --- BODY EVOLUTION HANDLERS ---
@@ -488,7 +511,27 @@ export default function App() {
     setBodyPhotos(prev => prev.filter(p => p.id !== id));
   };
 
-  // Data Export (Workouts + Body Evolution + Progress Photos)
+  const handleSaveCustomRoutine = (routine: RoutineTemplate) => {
+    setCustomRoutines(prev => {
+      const idx = prev.findIndex(r => r.id === routine.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = routine;
+        return copy;
+      }
+      return [routine, ...prev];
+    });
+    setSyncToast('Rotina personalizada salva!');
+    setTimeout(() => setSyncToast(null), 3000);
+  };
+
+  const handleDeleteCustomRoutine = (routineId: string) => {
+    setCustomRoutines(prev => prev.filter(r => r.id !== routineId));
+    setSyncToast('Rotina personalizada removida.');
+    setTimeout(() => setSyncToast(null), 3000);
+  };
+
+  // Data Export (Workouts + Body Evolution + Progress Photos + Custom Routines)
   const handleExportData = () => {
     try {
       const backup = {
@@ -499,6 +542,7 @@ export default function App() {
         bodyMeasurements,
         bodyGoal,
         bodyPhotos, // Photos included in JSON export
+        customRoutines, // Custom routines included in backup
         exportedAt: new Date().toISOString()
       };
       const jsonString = JSON.stringify(backup, null, 2);
@@ -643,6 +687,9 @@ export default function App() {
           <span>{authError}</span>
         </div>
       )}
+
+      {/* In-App PWA Installation Prompt / Banner */}
+      <PWAInstallBanner />
 
       {/* Top Bar Navigation (3 Zones) */}
       <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
@@ -821,8 +868,11 @@ export default function App() {
 
         {activeTab === 'rotinas' && (
           <WorkoutRoutines
+            customRoutines={customRoutines}
             onStartTemplate={handleStartTemplate}
             onCustomWorkout={handleStartCustomWorkout}
+            onSaveCustomRoutine={handleSaveCustomRoutine}
+            onDeleteCustomRoutine={handleDeleteCustomRoutine}
           />
         )}
 

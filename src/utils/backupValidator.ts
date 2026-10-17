@@ -1,4 +1,4 @@
-import { WorkoutSession, PersonalRecord, WorkoutExercise, WorkoutSet } from '../types/workout';
+import { WorkoutSession, PersonalRecord, WorkoutExercise, WorkoutSet, RoutineTemplate } from '../types/workout';
 import { WeightEntry, MeasurementEntry, BodyGoal, ProgressPhoto, MeasurementKey } from '../types/bodyEvolution';
 
 export interface FitHomeBackup {
@@ -9,6 +9,7 @@ export interface FitHomeBackup {
   bodyMeasurements?: MeasurementEntry[];
   bodyGoal?: BodyGoal;
   bodyPhotos?: ProgressPhoto[];
+  customRoutines?: RoutineTemplate[];
   exportedAt?: string;
 }
 
@@ -65,7 +66,8 @@ export function validateFitHomeBackup(input: unknown): ValidationResult {
     'bodyWeights' in obj ||
     'bodyMeasurements' in obj ||
     'bodyGoal' in obj ||
-    'bodyPhotos' in obj;
+    'bodyPhotos' in obj ||
+    'customRoutines' in obj;
 
   if (!hasAnyKnownSection) {
     return {
@@ -618,6 +620,22 @@ export function validateFitHomeBackup(input: unknown): ValidationResult {
       category: p.category as ProgressPhoto['category'],
       notes: typeof p.notes === 'string' ? p.notes : undefined,
       createdAt: typeof p.createdAt === 'string' ? p.createdAt : String(p.date)
+    }));
+  }
+
+  if (Array.isArray(obj.customRoutines)) {
+    normalizedData.customRoutines = obj.customRoutines.map((r: Record<string, unknown>) => ({
+      id: String(r.id),
+      name: String(r.name || 'Rotina Personalizada'),
+      description: typeof r.description === 'string' ? r.description : '',
+      targetMuscles: Array.isArray(r.targetMuscles) ? (r.targetMuscles as RoutineTemplate['targetMuscles']) : [],
+      equipmentNeeded: Array.isArray(r.equipmentNeeded) ? (r.equipmentNeeded as RoutineTemplate['equipmentNeeded']) : [],
+      durationMinutes: typeof r.durationMinutes === 'number' ? r.durationMinutes : 30,
+      apartmentFriendly: Boolean(r.apartmentFriendly),
+      exercises: Array.isArray(r.exercises) ? (r.exercises as RoutineTemplate['exercises']) : [],
+      isCustom: true,
+      createdAt: typeof r.createdAt === 'string' ? r.createdAt : new Date().toISOString(),
+      updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : undefined
     }));
   }
 

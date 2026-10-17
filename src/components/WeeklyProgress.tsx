@@ -13,8 +13,11 @@ import {
   TrendingUp,
   Activity,
   Layers,
-  Repeat
+  Repeat,
+  Trophy
 } from 'lucide-react';
+import { WorkoutStreakCalendar } from './WorkoutStreakCalendar';
+import { calculateWorkoutStreaks } from '../utils/streakUtils';
 import {
   ResponsiveContainer,
   LineChart,
@@ -39,8 +42,10 @@ export const WeeklyProgress: React.FC<WeeklyProgressProps> = ({
   onStartWorkout
 }) => {
   const [chartMetric, setChartMetric] = useState<'reps' | 'volumeKg' | 'sets'>('reps');
+  const [viewMode, setViewMode] = useState<'weekly' | 'calendar'>('weekly');
 
   const now = new Date();
+  const { currentStreak, longestStreak } = calculateWorkoutStreaks(sessions, now);
   const currentDay = now.getDay();
   const mondayDiff = currentDay === 0 ? -6 : 1 - currentDay;
   const startOfWeek = new Date(now);
@@ -333,18 +338,52 @@ export const WeeklyProgress: React.FC<WeeklyProgressProps> = ({
         {/* Consistency streak */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span>Constância Ativa</span>
+            <span>Sequência Ativa</span>
             <Flame className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-display tabular-nums">
-            4 <span className="text-sm font-normal text-slate-400">semanas</span>
+            {currentStreak} <span className="text-sm font-normal text-slate-400">{currentStreak === 1 ? 'dia' : 'dias'}</span>
           </div>
           <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-            <Home className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Treinando sem faltar</span>
+            <Trophy className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <span>Recorde: {longestStreak} {longestStreak === 1 ? 'dia' : 'dias'}</span>
           </p>
         </div>
       </div>
+
+      {/* Sub-view Switcher: Weekly Overview vs Monthly Consistency Calendar */}
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <button
+          type="button"
+          onClick={() => setViewMode('weekly')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+            viewMode === 'weekly'
+              ? 'bg-slate-900 text-emerald-400 border border-emerald-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Visão Semanal & Histórico</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setViewMode('calendar')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+            viewMode === 'calendar'
+              ? 'bg-slate-900 text-emerald-400 border border-emerald-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Calendário Mensal & Frequência</span>
+        </button>
+      </div>
+
+      {viewMode === 'calendar' ? (
+        <WorkoutStreakCalendar sessions={sessions} onStartWorkout={onStartWorkout} />
+      ) : (
+        <React.Fragment>
 
       {/* --- NOVO GRÁFICO RECHARTS: EVOLUÇÃO DAS ÚLTIMAS 4 SEMANAS --- */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl">
@@ -714,6 +753,8 @@ export const WeeklyProgress: React.FC<WeeklyProgressProps> = ({
           ))}
         </div>
       </div>
-    </div>
-  );
+    </React.Fragment>
+    )}
+  </div>
+);
 };

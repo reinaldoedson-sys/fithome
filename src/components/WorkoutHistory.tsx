@@ -12,7 +12,10 @@ import {
   Download,
   Upload,
   RefreshCw,
-  FileText
+  FileText,
+  AlertTriangle,
+  X,
+  Check
 } from 'lucide-react';
 
 interface WorkoutHistoryProps {
@@ -33,6 +36,8 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
   onImportData
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(sessions[0]?.id || null);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const formatDate = (isoString: string) => {
     const d = new Date(isoString);
@@ -88,6 +93,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
               onChange={e => {
                 const file = e.target.files?.[0];
                 if (file) onImportData(file);
+                e.target.value = '';
               }}
             />
           </label>
@@ -95,11 +101,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
           {sessions.length > 0 && (
             <button
               type="button"
-              onClick={() => {
-                if (confirm('Tem certeza de que deseja apagar todo o histórico de treinos?')) {
-                  onClearHistory();
-                }
-              }}
+              onClick={() => setShowClearConfirm(true)}
               className="px-3 py-1.5 bg-slate-900 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors"
               title="Apagar todo o histórico"
             >
@@ -180,9 +182,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
                       type="button"
                       onClick={e => {
                         e.stopPropagation();
-                        if (confirm('Deseja excluir este treino do histórico?')) {
-                          onDeleteSession(session.id);
-                        }
+                        setSessionToDelete(session.id);
                       }}
                       className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors"
                       title="Excluir treino"
@@ -252,6 +252,84 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* In-App Confirmation Modal: Delete Single Session */}
+      {sessionToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm shadow-2xl p-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-white">Excluir Treino</h4>
+                <p className="text-xs text-slate-400">Esta ação não pode ser desfeita.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Deseja realmente remover este registro de treino do seu histórico?
+            </p>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setSessionToDelete(null)}
+                className="px-3.5 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteSession(sessionToDelete);
+                  setSessionToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition-all shadow-md shadow-rose-500/20"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Confirmation Modal: Clear Entire History */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm shadow-2xl p-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-white">Limpar Todo o Histórico</h4>
+                <p className="text-xs text-rose-400 font-medium">Atenção: Ação irreversível</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Tem certeza de que deseja apagar permanentemente todas as suas sessões de treino registradas?
+            </p>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                className="px-3.5 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClearHistory();
+                  setShowClearConfirm(false);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition-all shadow-md shadow-rose-500/20"
+              >
+                Limpar Tudo
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

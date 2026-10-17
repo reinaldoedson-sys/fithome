@@ -1,6 +1,14 @@
-import React, { useEffect } from 'react';
-import { Play, Pause, Plus, Minus, X, Bell } from 'lucide-react';
-import { playTimerBeep } from '../utils/audio';
+import React, { useEffect, useState } from 'react';
+import { Play, Pause, Plus, Minus, X, Bell, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
+import {
+  playTimerBeep,
+  playCountdownBeep,
+  speakVoiceAlert,
+  isSoundEnabled,
+  setSoundEnabled,
+  isVoiceEnabled,
+  setVoiceEnabled
+} from '../utils/audio';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -19,13 +27,34 @@ export const RestTimer: React.FC<RestTimerProps> = ({
   onAdjustTime,
   onClose,
 }) => {
+  const [soundOn, setSoundOn] = useState(() => isSoundEnabled());
+  const [voiceOn, setVoiceOn] = useState(() => isVoiceEnabled());
+
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const progressPercent = duration > 0 ? ((duration - timeLeft) / duration) * 100 : 0;
 
+  const handleToggleSound = () => {
+    const nextVal = !soundOn;
+    setSoundOn(nextVal);
+    setSoundEnabled(nextVal);
+  };
+
+  const handleToggleVoice = () => {
+    const nextVal = !voiceOn;
+    setVoiceOn(nextVal);
+    setVoiceEnabled(nextVal);
+  };
+
+  // Beeps & voice alert effects
   useEffect(() => {
-    if (timeLeft === 0 && isRunning) {
+    if (!isRunning) return;
+
+    if (timeLeft === 3 || timeLeft === 2 || timeLeft === 1) {
+      playCountdownBeep(timeLeft);
+    } else if (timeLeft === 0) {
       playTimerBeep(true);
+      speakVoiceAlert('Descanso finalizado! Hora de treinar!');
       if (typeof window !== 'undefined' && 'vibrate' in navigator) {
         try {
           navigator.vibrate([200, 100, 200, 100, 300]);
@@ -46,27 +75,59 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             Descanso entre Séries
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors"
-          aria-label="Fechar temporizador"
-        >
-          <X className="w-4 h-4" />
-        </button>
+
+        <div className="flex items-center gap-1">
+          {/* Sound toggle button */}
+          <button
+            type="button"
+            onClick={handleToggleSound}
+            className={`p-1 rounded-lg transition-colors ${
+              soundOn ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-slate-500 hover:bg-slate-800'
+            }`}
+            title={soundOn ? 'Desativar sons' : 'Ativar sons'}
+          >
+            {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+
+          {/* Voice alert toggle button */}
+          <button
+            type="button"
+            onClick={handleToggleVoice}
+            className={`p-1 rounded-lg transition-colors ${
+              voiceOn ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-slate-500 hover:bg-slate-800'
+            }`}
+            title={voiceOn ? 'Desativar voz sintetizada' : 'Ativar voz sintetizada'}
+          >
+            {voiceOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+          </button>
+
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors ml-1"
+            aria-label="Fechar temporizador"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Progress Bar */}
       <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-3">
         <div
-          className="bg-emerald-500 h-full transition-all duration-1000 ease-linear rounded-full"
+          className={`h-full transition-all duration-1000 ease-linear rounded-full ${
+            timeLeft <= 3 && timeLeft > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'
+          }`}
           style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
         />
       </div>
 
       {/* Main Countdown Display */}
       <div className="flex items-center justify-between">
-        <div className="text-3xl font-extrabold tracking-tight tabular-nums text-slate-100 font-display">
+        <div className={`text-3xl font-extrabold tracking-tight tabular-nums font-display transition-colors ${
+          timeLeft <= 3 && timeLeft > 0 ? 'text-amber-300' : 'text-slate-100'
+        }`}>
           {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
         </div>
 

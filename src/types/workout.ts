@@ -81,6 +81,9 @@ export interface RoutineTemplate {
     defaultSets: number;
     defaultTarget: number; // reps ou segundos
   }[];
+  isCustom?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PersonalRecord {
