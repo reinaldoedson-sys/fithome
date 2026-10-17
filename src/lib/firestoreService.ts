@@ -208,6 +208,15 @@ export async function saveUserGoalToFirestore(userId: string, goal: BodyGoal) {
   }
 }
 
+export async function deleteUserGoalFromFirestore(userId: string) {
+  const path = `users/${userId}/goals/current`;
+  try {
+    await deleteDoc(doc(db, path));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
 // Sync Personal Records
 export function subscribeUserRecords(
   userId: string,
@@ -242,6 +251,15 @@ export async function saveUserRecordToFirestore(userId: string, record: Personal
     await setDoc(doc(db, path), record);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteUserRecordFromFirestore(userId: string, exerciseId: string) {
+  const path = `users/${userId}/records/${exerciseId}`;
+  try {
+    await deleteDoc(doc(db, path));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 

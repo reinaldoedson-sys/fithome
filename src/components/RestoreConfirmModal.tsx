@@ -1,10 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FitHomeBackup } from '../utils/backupValidator';
-import { AlertTriangle, X, Check, Loader2, Calendar, Dumbbell, Scale, Ruler, Trophy, Camera } from 'lucide-react';
+import { RestoreMode } from '../services/backupRestoreService';
+import {
+  AlertTriangle,
+  X,
+  Check,
+  Loader2,
+  Calendar,
+  Dumbbell,
+  Scale,
+  Ruler,
+  Trophy,
+  Camera,
+  Layers,
+  RefreshCw,
+  Info
+} from 'lucide-react';
 
 interface RestoreConfirmModalProps {
   backup: FitHomeBackup;
-  onConfirm: () => void;
+  onConfirm: (mode: RestoreMode) => void;
   onClose: () => void;
   isRestoring?: boolean;
 }
@@ -15,6 +30,8 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
   onClose,
   isRestoring = false
 }) => {
+  const [selectedMode, setSelectedMode] = useState<RestoreMode>('merge');
+
   const sessionsCount = backup.sessions?.length || 0;
   const weightsCount = backup.bodyWeights?.length || 0;
   const measuresCount = backup.bodyMeasurements?.length || 0;
@@ -28,17 +45,17 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-8">
         {/* Header */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Confirmar Restauração</h3>
-              <p className="text-xs text-slate-400">Substituição e atualização de dados</p>
+              <h3 className="text-lg font-bold text-white">Restaurar Backup</h3>
+              <p className="text-xs text-slate-400">Escolha o modo de restauração dos seus dados</p>
             </div>
           </div>
           <button
@@ -52,16 +69,92 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-4">
-          <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-200 leading-relaxed">
-            Você já possui dados registrados no FitHome. Restaurar este backup substituirá ou atualizará seus treinos, pesagens, medidas e metas locais e na nuvem.
+        <div className="p-5 space-y-5">
+          {/* Mode Selection */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+              Modo de Restauração:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: Merge */}
+              <button
+                type="button"
+                onClick={() => setSelectedMode('merge')}
+                disabled={isRestoring}
+                className={`p-4 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                  selectedMode === 'merge'
+                    ? 'bg-emerald-950/30 border-emerald-500/50 shadow-md shadow-emerald-950/30 ring-1 ring-emerald-500/30'
+                    : 'bg-slate-950/50 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Layers className={`w-4 h-4 ${selectedMode === 'merge' ? 'text-emerald-400' : 'text-slate-400'}`} />
+                      <span className="font-bold text-sm text-white">Mesclar Dados</span>
+                    </div>
+                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Recomendado
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Preserva registros atuais. Adiciona itens novos do backup e atualiza os que tiverem o mesmo identificador sem apagar nada.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Replace */}
+              <button
+                type="button"
+                onClick={() => setSelectedMode('replace')}
+                disabled={isRestoring}
+                className={`p-4 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                  selectedMode === 'replace'
+                    ? 'bg-amber-950/30 border-amber-500/50 shadow-md shadow-amber-950/30 ring-1 ring-amber-500/30'
+                    : 'bg-slate-950/50 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className={`w-4 h-4 ${selectedMode === 'replace' ? 'text-amber-400' : 'text-slate-400'}`} />
+                      <span className="font-bold text-sm text-white">Substituir Dados</span>
+                    </div>
+                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Integral
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Faz com que os dados correspondam exatamente ao backup nas categorias incluídas. Registros excedentes na nuvem e locais são removidos.
+                  </p>
+                </div>
+              </button>
+            </div>
           </div>
 
+          {/* Warning banner for Replace Mode */}
+          {selectedMode === 'replace' ? (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-200 flex items-start gap-2.5 leading-relaxed">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong>Atenção:</strong> Treinos, pesagens, medidas e recordes existentes que não estiverem presentes no arquivo serão excluídos permanentemente para manter a paridade com o arquivo restaurado.
+              </div>
+            </div>
+          ) : (
+            <div className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-xl text-xs text-slate-300 flex items-start gap-2.5 leading-relaxed">
+              <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <strong>Resolução de Conflitos:</strong> Registros já cadastrados que coincidirem em identificador serão atualizados com as informações do backup. Nenhum treino ou medida não listado no backup será apagado.
+              </div>
+            </div>
+          )}
+
+          {/* Backup Summary Box */}
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Conteúdo do Arquivo de Backup:
+              Registros Encontrados no Arquivo:
             </h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Dumbbell className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div>
@@ -81,7 +174,7 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Ruler className="w-4 h-4 text-purple-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Medidas Corporais</div>
+                  <div className="text-slate-400">Medidas</div>
                   <div className="font-semibold text-white">{measuresCount} registros</div>
                 </div>
               </div>
@@ -97,15 +190,15 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Calendar className="w-4 h-4 text-teal-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Metas Corporais</div>
-                  <div className="font-semibold text-white">{hasGoal ? 'Configuradas' : 'Nenhuma'}</div>
+                  <div className="text-slate-400">Meta Corporal</div>
+                  <div className="font-semibold text-white">{hasGoal ? 'Configurada' : 'Nenhuma'}</div>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Camera className="w-4 h-4 text-pink-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Fotos Corporais</div>
+                  <div className="text-slate-400">Fotos</div>
                   <div className="font-semibold text-white">{photosCount} fotos</div>
                 </div>
               </div>
@@ -125,19 +218,28 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={() => onConfirm(selectedMode)}
             disabled={isRestoring}
-            className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50"
+            className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 ${
+              selectedMode === 'replace'
+                ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
+                : 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-emerald-500/20'
+            }`}
           >
             {isRestoring ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Restaurando...</span>
               </>
+            ) : selectedMode === 'replace' ? (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                <span>Substituir e Restaurar</span>
+              </>
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                <span>Confirmar e Restaurar</span>
+                <span>Mesclar e Restaurar</span>
               </>
             )}
           </button>

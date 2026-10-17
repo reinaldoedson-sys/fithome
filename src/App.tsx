@@ -42,6 +42,11 @@ import {
   syncRestoredBackupToFirestore
 } from './services/migrationService';
 import {
+  executeBackupRestore,
+  RestoreMode,
+  ExistingAppState
+} from './services/backupRestoreService';
+import {
   Home,
   BookOpen,
   Calendar,
@@ -516,61 +521,47 @@ export default function App() {
   };
 
   // Data Restore Execution: handles atomic state update, quota safety, and async Firestore sync
-  const executeRestore = async (parsed: FitHomeBackup) => {
+  const executeRestore = async (parsed: FitHomeBackup, mode: RestoreMode = 'merge') => {
     setIsRestoring(true);
     try {
-      let photoQuotaWarning = false;
+      const existingState: ExistingAppState = {
+        sessions,
+        personalRecords,
+        bodyWeights,
+        bodyMeasurements,
+        bodyGoal,
+        bodyPhotos
+      };
 
-      // 1. Update React state immediately
-      if (parsed.sessions) setSessions(parsed.sessions);
-      if (parsed.personalRecords) setPersonalRecords(parsed.personalRecords);
-      if (parsed.bodyWeights) setBodyWeights(parsed.bodyWeights);
-      if (parsed.bodyMeasurements) setBodyMeasurements(parsed.bodyMeasurements);
-      if (parsed.bodyGoal) setBodyGoal(parsed.bodyGoal);
+      const result = await executeBackupRestore(
+        mode,
+        existingState,
+        parsed,
+        user?.uid
+      );
 
-      // 2. Photos restoration: Local storage only with quota safety (never uploaded to Firestore!)
-      if (parsed.bodyPhotos && parsed.bodyPhotos.length > 0) {
-        try {
-          const key = getStorageKey('body_photos_v1', user?.uid);
-          localStorage.setItem(key, JSON.stringify(parsed.bodyPhotos));
-          setBodyPhotos(parsed.bodyPhotos);
-        } catch (storageErr) {
-          console.warn('Storage quota limit reached while saving photos:', storageErr);
-          photoQuotaWarning = true;
-          // Best effort memory & partial persistence
-          try {
-            const slice = parsed.bodyPhotos.slice(0, 3);
-            const key = getStorageKey('body_photos_v1', user?.uid);
-            localStorage.setItem(key, JSON.stringify(slice));
-            setBodyPhotos(slice);
-          } catch {
-            setBodyPhotos(parsed.bodyPhotos.slice(0, 3));
-          }
-        }
-      } else if (parsed.bodyPhotos) {
-        setBodyPhotos([]);
-      }
+      // 1. Update React state with the resulting merged or replaced state
+      setSessions(result.data.sessions);
+      setPersonalRecords(result.data.personalRecords);
+      setBodyWeights(result.data.bodyWeights);
+      setBodyMeasurements(result.data.bodyMeasurements);
+      setBodyGoal(result.data.bodyGoal);
+      setBodyPhotos(result.data.bodyPhotos);
 
-      // 3. For authenticated users, sync to Firestore with Promise.all and mark categories
-      if (user) {
-        const syncResult = await syncRestoredBackupToFirestore(user.uid, parsed);
-        if (!syncResult.success) {
-          console.warn('Some restored categories failed cloud sync:', syncResult.errors);
-          setAuthError(
-            'Backup restaurado localmente! Porém, alguns registros não puderam ser sincronizados com a nuvem no momento.'
-          );
-          setTimeout(() => setAuthError(null), 6000);
-          return;
-        }
-      }
-
-      if (photoQuotaWarning) {
+      // 2. Feedback reporting
+      if (result.isPartial) {
         setAuthError(
-          'Dados restaurados com sucesso! No entanto, o limite de armazenamento local do navegador atingiu a cota máxima para fotos.'
+          `Restauração parcial: dados locais atualizados, mas houve falha na nuvem (${result.errors.join(', ')}). Você pode tentar novamente.`
+        );
+        setTimeout(() => setAuthError(null), 7000);
+      } else if (result.photoQuotaExceeded) {
+        setAuthError(
+          'Backup restaurado! Porém, o limite de espaço de armazenamento local do navegador foi atingido para fotos corporais.'
         );
         setTimeout(() => setAuthError(null), 6000);
       } else {
-        setSyncToast('Backup completo importado com sucesso!');
+        const modeLabel = mode === 'replace' ? 'substituído' : 'mesclado';
+        setSyncToast(`Backup ${modeLabel} e sincronizado com sucesso!`);
         setTimeout(() => setSyncToast(null), 3500);
       }
     } catch (err) {
@@ -624,7 +615,7 @@ export default function App() {
           // Solicit user confirmation before overwriting existing data
           setPendingRestoreBackup(parsed);
         } else {
-          executeRestore(parsed);
+          executeRestore(parsed, 'replace');
         }
       } catch (err) {
         console.error('Import reading error:', err);
@@ -920,7 +911,7 @@ export default function App() {
       {pendingRestoreBackup && (
         <RestoreConfirmModal
           backup={pendingRestoreBackup}
-          onConfirm={() => executeRestore(pendingRestoreBackup)}
+          onConfirm={(mode) => executeRestore(pendingRestoreBackup, mode)}
           onClose={() => setPendingRestoreBackup(null)}
           isRestoring={isRestoring}
         />
