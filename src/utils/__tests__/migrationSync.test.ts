@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   hasCategoryMigrated,
   markCategoryMigrated,
@@ -8,9 +8,18 @@ import {
   ALL_MIGRATION_CATEGORIES,
   MigrationCategory
 } from '../migrationUtils';
+import {
+  migrateCategory,
+  handleCategorySnapshot,
+  syncRestoredBackupToFirestore,
+  clearInFlightMigrations,
+  deduplicateEntries,
+  GUEST_STORAGE_KEYS
+} from '../../services/migrationService';
+import { WorkoutSession, PersonalRecord } from '../../types/workout';
+import { WeightEntry, MeasurementEntry, BodyGoal } from '../../types/bodyEvolution';
 
-describe('Migration and Sync State Logic (Per-Category Independent Control)', () => {
-  // In-memory mock storage adhering to Web Storage API
+describe('Real Production Migration Service & Utilities (migrationService.ts & migrationUtils.ts)', () => {
   let mockStorage: Record<string, string> = {};
 
   const fakeStorage: Storage = {
@@ -32,6 +41,8 @@ describe('Migration and Sync State Logic (Per-Category Independent Control)', ()
 
   beforeEach(() => {
     mockStorage = {};
+    clearInFlightMigrations();
+    vi.clearAllMocks();
   });
 
   const getStorageKey = (key: string, uid?: string | null) => {
@@ -53,21 +64,39 @@ describe('Migration and Sync State Logic (Per-Category Independent Control)', ()
     expect(getCategoryMigrationKey('uid_123', 'goals')).toBe('fithome_migrated_uid_123_goals');
   });
 
-  it('tracks migration independently per category: completing weights does NOT block workouts or measurements', () => {
-    const uid = 'athlete-abc';
+  it('tracks migration independently per category using real migrateCategory implementation', async () => {
+    const uid = 'athlete-independent';
 
-    // Initially none are migrated
+    // Guest has data in weights and workouts
+    mockStorage[GUEST_STORAGE_KEYS.weights.primary] = JSON.stringify([
+      { id: 'w1', date: '2026-03-01', weightKg: 78.5 }
+    ]);
+    mockStorage[GUEST_STORAGE_KEYS.workouts.primary] = JSON.stringify([
+      { id: 's1', title: 'Treino A', startTime: '2026-03-01T10:00:00Z', exercises: [] }
+    ]);
+
+    const saveWeight = vi.fn().mockResolvedValue(undefined);
+    const saveWorkout = vi.fn().mockResolvedValue(undefined);
+
+    // Initial state: none are migrated
     expect(hasCategoryMigrated(uid, 'weights', fakeStorage)).toBe(false);
     expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(false);
     expect(hasCategoryMigrated(uid, 'measurements', fakeStorage)).toBe(false);
     expect(hasCategoryMigrated(uid, 'records', fakeStorage)).toBe(false);
     expect(hasCategoryMigrated(uid, 'goals', fakeStorage)).toBe(false);
-    expect(areAllCategoriesMigrated(uid, fakeStorage)).toBe(false);
 
-    // Mark weights migrated
-    markCategoryMigrated(uid, 'weights', fakeStorage);
+    // 1. Migrate only weights
+    const weightResult = await migrateCategory(uid, 'weights', {
+      storage: fakeStorage,
+      saveWeight
+    });
 
-    // Only weights should be marked as migrated
+    expect(weightResult.success).toBe(true);
+    expect(weightResult.migrated).toBe(true);
+    expect(weightResult.count).toBe(1);
+    expect(saveWeight).toHaveBeenCalledTimes(1);
+
+    // ONLY weights should be marked as migrated
     expect(hasCategoryMigrated(uid, 'weights', fakeStorage)).toBe(true);
     expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(false);
     expect(hasCategoryMigrated(uid, 'measurements', fakeStorage)).toBe(false);
@@ -75,25 +104,192 @@ describe('Migration and Sync State Logic (Per-Category Independent Control)', ()
     expect(hasCategoryMigrated(uid, 'goals', fakeStorage)).toBe(false);
     expect(areAllCategoriesMigrated(uid, fakeStorage)).toBe(false);
 
-    // Mark the rest step by step
-    markCategoryMigrated(uid, 'workouts', fakeStorage);
+    // 2. Migrate workouts next
+    const workoutResult = await migrateCategory(uid, 'workouts', {
+      storage: fakeStorage,
+      saveWorkout
+    });
+
+    expect(workoutResult.success).toBe(true);
+    expect(workoutResult.migrated).toBe(true);
+    expect(workoutResult.count).toBe(1);
+    expect(saveWorkout).toHaveBeenCalledTimes(1);
+
     expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
-    expect(areAllCategoriesMigrated(uid, fakeStorage)).toBe(false);
-
-    markCategoryMigrated(uid, 'measurements', fakeStorage);
-    markCategoryMigrated(uid, 'records', fakeStorage);
-    markCategoryMigrated(uid, 'goals', fakeStorage);
-
-    expect(areAllCategoriesMigrated(uid, fakeStorage)).toBe(true);
+    expect(hasCategoryMigrated(uid, 'measurements', fakeStorage)).toBe(false);
   });
 
-  it('supports resetCategoryMigration for debugging and testing', () => {
-    const uid = 'athlete-reset';
-    markCategoryMigrated(uid, 'workouts', fakeStorage);
+  it('guarantees the sequence: login -> sync -> delete all records -> empty snapshot -> reload without resurrecting deleted data', async () => {
+    const uid = 'athlete-lifecycle-test';
+    let currentSessionsState: WorkoutSession[] = [];
+
+    // Step 1: User has guest sessions in local storage before login
+    const guestWorkouts: WorkoutSession[] = [
+      {
+        id: 'guest-w1',
+        title: 'Treino Convidado',
+        startTime: '2026-03-01T09:00:00Z',
+        endTime: '2026-03-01T09:45:00Z',
+        durationSeconds: 2700,
+        totalVolumeKg: 1200,
+        totalSets: 12,
+        exercises: []
+      }
+    ];
+    mockStorage[GUEST_STORAGE_KEYS.workouts.primary] = JSON.stringify(guestWorkouts);
+    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(false);
+
+    const saveWorkout = vi.fn().mockResolvedValue(undefined);
+    const deps = { storage: fakeStorage, saveWorkout };
+
+    // Step 2: User logs in. Initial snapshot arrives from Firestore with empty remote array
+    await handleCategorySnapshot(
+      uid,
+      'workouts',
+      [],
+      (data) => { currentSessionsState = data; },
+      deps
+    );
+
+    // Unmigrated guest data was migrated to cloud and state was populated
+    expect(currentSessionsState.length).toBe(1);
+    expect(currentSessionsState[0].id).toBe('guest-w1');
+    expect(saveWorkout).toHaveBeenCalledWith(uid, expect.objectContaining({ id: 'guest-w1' }));
     expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
 
-    resetCategoryMigration(uid, 'workouts', fakeStorage);
+    // Step 3: User deletes all records in the application.
+    // Live snapshot arrives from Firestore with empty array []
+    await handleCategorySnapshot(
+      uid,
+      'workouts',
+      [],
+      (data) => { currentSessionsState = data; },
+      deps
+    );
+
+    // State reflects authorized deletion (empty array)
+    expect(currentSessionsState.length).toBe(0);
+
+    // Step 4: User reloads the application.
+    // hasCategoryMigrated is already true.
+    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
+
+    // Initial snapshot after reload arrives with []
+    let stateAfterReload: WorkoutSession[] = [{ id: 'dummy', title: 'Before' } as WorkoutSession];
+    await handleCategorySnapshot(
+      uid,
+      'workouts',
+      [],
+      (data) => { stateAfterReload = data; },
+      deps
+    );
+
+    // State remains empty []! Guest data in localStorage was NOT resurrected!
+    expect(stateAfterReload.length).toBe(0);
+  });
+
+  it('handles Firestore write failure: does NOT mark category as migrated and permits clean retry', async () => {
+    const uid = 'athlete-failure-retry';
+
+    mockStorage[GUEST_STORAGE_KEYS.workouts.primary] = JSON.stringify([
+      { id: 'w-fail', title: 'Treino A', startTime: '2026-03-01T10:00:00Z', exercises: [] }
+    ]);
+
+    const failingSave = vi.fn().mockRejectedValue(new Error('Firestore connection timeout'));
+
+    // Attempt migration with failing Firestore
+    await expect(
+      migrateCategory(uid, 'workouts', {
+        storage: fakeStorage,
+        saveWorkout: failingSave
+      })
+    ).rejects.toThrow('Firestore connection timeout');
+
+    // CRITICAL: Category MUST NOT be marked as migrated!
     expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(false);
+
+    // Subsequent retry with working network
+    const workingSave = vi.fn().mockResolvedValue(undefined);
+    const retryResult = await migrateCategory(uid, 'workouts', {
+      storage: fakeStorage,
+      saveWorkout: workingSave
+    });
+
+    expect(retryResult.success).toBe(true);
+    expect(retryResult.migrated).toBe(true);
+    expect(workingSave).toHaveBeenCalledTimes(1);
+
+    // Now category IS marked as migrated
+    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
+  });
+
+  it('prevents duplicate simultaneous executions for the same user and category via in-flight concurrency lock', async () => {
+    const uid = 'athlete-concurrency';
+
+    mockStorage[GUEST_STORAGE_KEYS.workouts.primary] = JSON.stringify([
+      { id: 'cw-1', title: 'Concorrência Test', startTime: '2026-03-01T10:00:00Z', exercises: [] }
+    ]);
+
+    let delayedResolve: () => void = () => {};
+    const delayedSave = vi.fn().mockImplementation(() => {
+      return new Promise<void>((resolve) => {
+        delayedResolve = resolve;
+      });
+    });
+
+    const deps = { storage: fakeStorage, saveWorkout: delayedSave };
+
+    // Fire two migration calls simultaneously
+    const promise1 = migrateCategory(uid, 'workouts', deps);
+    const promise2 = migrateCategory(uid, 'workouts', deps);
+
+    // Release the write
+    delayedResolve();
+
+    const [res1, res2] = await Promise.all([promise1, promise2]);
+
+    expect(res1.success).toBe(true);
+    expect(res2.success).toBe(true);
+    // saveWorkout should only have been called ONCE, not twice!
+    expect(delayedSave).toHaveBeenCalledTimes(1);
+    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
+  });
+
+  it('deduplicates items before writing to Firestore', async () => {
+    const uid = 'athlete-dedup';
+
+    mockStorage[GUEST_STORAGE_KEYS.weights.primary] = JSON.stringify([
+      { id: 'dup-1', date: '2026-03-01', weightKg: 75.0 },
+      { id: 'dup-1', date: '2026-03-01', weightKg: 75.0 }, // Duplicate ID
+      { id: 'dup-2', date: '2026-03-02', weightKg: 75.5 }
+    ]);
+
+    const savedIds: string[] = [];
+    const saveWeight = vi.fn().mockImplementation((_uid: string, w: WeightEntry) => {
+      savedIds.push(w.id);
+      return Promise.resolve();
+    });
+
+    const result = await migrateCategory(uid, 'weights', {
+      storage: fakeStorage,
+      saveWeight
+    });
+
+    expect(result.count).toBe(2);
+    expect(savedIds).toEqual(['dup-1', 'dup-2']);
+    expect(hasCategoryMigrated(uid, 'weights', fakeStorage)).toBe(true);
+  });
+
+  it('deduplicateEntries helper preserves first occurrence of item by id or exerciseId', () => {
+    const raw = [
+      { id: '1', title: 'First' },
+      { id: '1', title: 'Duplicate' },
+      { id: '2', title: 'Second' }
+    ];
+    const deduped = deduplicateEntries(raw);
+    expect(deduped.length).toBe(2);
+    expect(deduped[0].title).toBe('First');
+    expect(deduped[1].title).toBe('Second');
   });
 
   it('preserves backward compatibility with legacy global migration flag', () => {
@@ -107,161 +303,95 @@ describe('Migration and Sync State Logic (Per-Category Independent Control)', ()
     }
   });
 
-  it('enforces isolation between different user IDs', () => {
-    const uid1 = 'user-alpha';
-    const uid2 = 'user-beta';
+  it('syncRestoredBackupToFirestore coordinates awaited batch writes and category flags', async () => {
+    const uid = 'athlete-restore-sync';
 
-    markCategoryMigrated(uid1, 'workouts', fakeStorage);
+    const saveWorkout = vi.fn().mockResolvedValue(undefined);
+    const saveWeight = vi.fn().mockResolvedValue(undefined);
+    const saveMeasurement = vi.fn().mockResolvedValue(undefined);
+    const saveRecord = vi.fn().mockResolvedValue(undefined);
+    const saveGoal = vi.fn().mockResolvedValue(undefined);
 
-    expect(hasCategoryMigrated(uid1, 'workouts', fakeStorage)).toBe(true);
-    expect(hasCategoryMigrated(uid2, 'workouts', fakeStorage)).toBe(false);
-  });
-
-  it('guarantees the sequence: login -> sync -> delete all records -> empty snapshot -> reload without resurrecting deleted data', () => {
-    const uid = 'test-athlete-lifecycle';
-    let localSessions: Array<{ id: string; name: string }> = [];
-
-    // Step 1: User has guest sessions in local storage before login
-    mockStorage['fithome_guest_user_sessions'] = JSON.stringify([{ id: 'guest-1', name: 'Treino Convidado' }]);
-    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(false);
-
-    // Step 2: User logs in. Initial snapshot arrives from Firestore (remote is empty)
-    let isInitialSnapshot = true;
-    const remoteWorkouts: Array<{ id: string; name: string }> = [];
-
-    const handleWorkoutSnapshot = (remote: Array<{ id: string; name: string }>) => {
-      const isMigrated = hasCategoryMigrated(uid, 'workouts', fakeStorage);
-
-      if (remote && remote.length > 0) {
-        localSessions = remote;
-        markCategoryMigrated(uid, 'workouts', fakeStorage);
-      } else if (!isMigrated && isInitialSnapshot) {
-        // Initial migration from guest data
-        const guestData = mockStorage['fithome_guest_user_sessions'];
-        if (guestData) {
-          const parsed = JSON.parse(guestData);
-          localSessions = parsed;
-          // In real application, saves to Firestore collection
+    const backupData = {
+      sessions: [
+        {
+          id: 's1',
+          title: 'Treino Backup',
+          startTime: '2026-03-01T08:00:00Z',
+          endTime: '2026-03-01T08:50:00Z',
+          durationSeconds: 3000,
+          totalVolumeKg: 1500,
+          totalSets: 15,
+          exercises: []
         }
-        markCategoryMigrated(uid, 'workouts', fakeStorage);
-      } else {
-        // Authorized empty state (records were cleared by user)
-        localSessions = [];
-      }
-      isInitialSnapshot = false;
+      ],
+      bodyWeights: [{ id: 'w1', date: '2026-03-01', weightKg: 80.0, createdAt: '2026-03-01T08:00:00Z' }],
+      bodyMeasurements: [{ id: 'm1', date: '2026-03-01', measurements: { cintura: 85 }, createdAt: '2026-03-01T08:00:00Z' }],
+      personalRecords: [{ exerciseId: 'ex1', exerciseName: 'Flexão de Braço', maxScore: 25, metricLabel: 'reps', achievedAt: '2026-03-01' }],
+      bodyGoal: { targetWeightKg: 75, heightCm: 180 }
     };
 
-    // First snapshot triggers migration of guest data
-    handleWorkoutSnapshot(remoteWorkouts);
-    expect(localSessions.length).toBe(1);
-    expect(localSessions[0].id).toBe('guest-1');
-    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
-
-    // Step 3: User deletes all records in the app
-    // Firestore fires a new live snapshot with empty array []
-    handleWorkoutSnapshot([]);
-
-    // Step 4: Callback runs on empty snapshot. Must NOT re-inject guest sessions!
-    expect(localSessions.length).toBe(0);
-
-    // Step 5: User reloads the page. hasCategoryMigrated is already true.
-    isInitialSnapshot = true;
-    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
-
-    // Initial snapshot after reload arrives with []
-    handleWorkoutSnapshot([]);
-    expect(localSessions.length).toBe(0); // STILL EMPTY! No ghost data resurrection!
-  });
-
-  it('guarantees that remote existing weights do NOT block empty workouts from migrating guest workouts', () => {
-    const uid = 'test-cross-category';
-    let localWeights: Array<{ id: string; weightKg: number }> = [];
-    let localWorkouts: Array<{ id: string; title: string }> = [];
-
-    // Guest has both weights and workouts stored
-    mockStorage['fithome_guest_body_weights_v1'] = JSON.stringify([{ id: 'gw-1', weightKg: 80 }]);
-    mockStorage['fithome_guest_user_sessions'] = JSON.stringify([{ id: 'gs-1', title: 'Treino A' }]);
-
-    // Simulated cloud: Remote weights has records, remote workouts is EMPTY
-    const remoteWeights = [{ id: 'rw-1', weightKg: 81 }];
-    const remoteWorkouts: Array<{ id: string; title: string }> = [];
-
-    // Weights snapshot fires first
-    const handleWeightsSnapshot = (remote: typeof remoteWeights) => {
-      const isMigrated = hasCategoryMigrated(uid, 'weights', fakeStorage);
-      if (remote && remote.length > 0) {
-        localWeights = remote;
-        markCategoryMigrated(uid, 'weights', fakeStorage);
-      } else if (!isMigrated) {
-        localWeights = JSON.parse(mockStorage['fithome_guest_body_weights_v1'] || '[]');
-        markCategoryMigrated(uid, 'weights', fakeStorage);
-      }
-    };
-
-    // Workouts snapshot fires second
-    const handleWorkoutsSnapshot = (remote: typeof remoteWorkouts) => {
-      const isMigrated = hasCategoryMigrated(uid, 'workouts', fakeStorage);
-      if (remote && remote.length > 0) {
-        localWorkouts = remote;
-        markCategoryMigrated(uid, 'workouts', fakeStorage);
-      } else if (!isMigrated) {
-        localWorkouts = JSON.parse(mockStorage['fithome_guest_user_sessions'] || '[]');
-        markCategoryMigrated(uid, 'workouts', fakeStorage);
-      }
-    };
-
-    // 1. Process weights snapshot
-    handleWeightsSnapshot(remoteWeights);
-    expect(localWeights.length).toBe(1);
-    expect(localWeights[0].id).toBe('rw-1');
-    expect(hasCategoryMigrated(uid, 'weights', fakeStorage)).toBe(true);
-
-    // 2. Crucial test: Workouts MUST still be unmigrated!
-    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(false);
-
-    // 3. Process workouts snapshot with empty cloud
-    handleWorkoutsSnapshot(remoteWorkouts);
-    // Workouts successfully migrated from guest sessions!
-    expect(localWorkouts.length).toBe(1);
-    expect(localWorkouts[0].id).toBe('gs-1');
-    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
-  });
-
-  it('migrates guest body goal when cloud goal is empty', () => {
-    const uid = 'test-goal-migration';
-    let localGoal: Record<string, unknown> = {};
-
-    mockStorage['fithome_guest_body_goal_v1'] = JSON.stringify({
-      targetWeightKg: 75,
-      heightCm: 180
+    const res = await syncRestoredBackupToFirestore(uid, backupData, {
+      storage: fakeStorage,
+      saveWorkout,
+      saveWeight,
+      saveMeasurement,
+      saveRecord,
+      saveGoal
     });
 
-    const handleGoalSnapshot = (remoteGoal: Record<string, unknown>) => {
-      const isMigrated = hasCategoryMigrated(uid, 'goals', fakeStorage);
-      const hasRemoteGoal = remoteGoal && Object.keys(remoteGoal).length > 0;
+    expect(res.success).toBe(true);
+    expect(res.errors.length).toBe(0);
 
-      if (hasRemoteGoal) {
-        localGoal = remoteGoal;
-        markCategoryMigrated(uid, 'goals', fakeStorage);
-      } else if (!isMigrated) {
-        const guestGoal = mockStorage['fithome_guest_body_goal_v1'];
-        if (guestGoal) {
-          localGoal = JSON.parse(guestGoal);
-        }
-        markCategoryMigrated(uid, 'goals', fakeStorage);
-      } else {
-        localGoal = {};
-      }
-    };
+    expect(saveWorkout).toHaveBeenCalledTimes(1);
+    expect(saveWeight).toHaveBeenCalledTimes(1);
+    expect(saveMeasurement).toHaveBeenCalledTimes(1);
+    expect(saveRecord).toHaveBeenCalledTimes(1);
+    expect(saveGoal).toHaveBeenCalledTimes(1);
 
-    // Cloud goal is empty {}
-    handleGoalSnapshot({});
-    expect(localGoal.targetWeightKg).toBe(75);
-    expect(localGoal.heightCm).toBe(180);
+    expect(hasCategoryMigrated(uid, 'workouts', fakeStorage)).toBe(true);
+    expect(hasCategoryMigrated(uid, 'weights', fakeStorage)).toBe(true);
+    expect(hasCategoryMigrated(uid, 'measurements', fakeStorage)).toBe(true);
+    expect(hasCategoryMigrated(uid, 'records', fakeStorage)).toBe(true);
+    expect(hasCategoryMigrated(uid, 'goals', fakeStorage)).toBe(true);
+    expect(areAllCategoriesMigrated(uid, fakeStorage)).toBe(true);
+  });
+
+  it('migrates guest body goal when cloud goal is empty using real handleCategorySnapshot', async () => {
+    const uid = 'test-goal-real';
+    let localGoalState: BodyGoal = {};
+
+    mockStorage[GUEST_STORAGE_KEYS.goals.primary] = JSON.stringify({
+      targetWeightKg: 72.5,
+      heightCm: 178
+    });
+
+    const saveGoal = vi.fn().mockResolvedValue(undefined);
+
+    // Initial snapshot arrives with empty goal {}
+    await handleCategorySnapshot(
+      uid,
+      'goals',
+      {},
+      (goal) => { localGoalState = goal; },
+      { storage: fakeStorage, saveGoal }
+    );
+
+    expect(localGoalState.targetWeightKg).toBe(72.5);
+    expect(localGoalState.heightCm).toBe(178);
+    expect(saveGoal).toHaveBeenCalledWith(uid, expect.objectContaining({ targetWeightKg: 72.5 }));
     expect(hasCategoryMigrated(uid, 'goals', fakeStorage)).toBe(true);
 
-    // Next time empty goal arrives (e.g. user cleared goal), stays empty
-    handleGoalSnapshot({});
-    expect(Object.keys(localGoal).length).toBe(0);
+    // User clears goal -> new snapshot arrives with {}
+    await handleCategorySnapshot(
+      uid,
+      'goals',
+      {},
+      (goal) => { localGoalState = goal; },
+      { storage: fakeStorage, saveGoal }
+    );
+
+    // Remains empty, no ghost data resurrection
+    expect(Object.keys(localGoalState).length).toBe(0);
   });
 });

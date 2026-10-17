@@ -35,7 +35,12 @@ import {
   subscribeUserRecords,
   saveUserRecordToFirestore
 } from './lib/firestoreService';
-import { validateFitHomeBackup } from './utils/backupValidator';
+import { validateFitHomeBackup, FitHomeBackup } from './utils/backupValidator';
+import { RestoreConfirmModal } from './components/RestoreConfirmModal';
+import {
+  handleCategorySnapshot,
+  syncRestoredBackupToFirestore
+} from './services/migrationService';
 import {
   Home,
   BookOpen,
@@ -81,6 +86,8 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [syncToast, setSyncToast] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [pendingRestoreBackup, setPendingRestoreBackup] = useState<FitHomeBackup | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Reference to hold current user ID across callbacks
   const currentUserIdRef = useRef<string | null>(null);
@@ -210,192 +217,33 @@ export default function App() {
           // ignore cache read error
         }
 
-        let workoutsInitialHandled = false;
-        let weightsInitialHandled = false;
-        let measurementsInitialHandled = false;
-        let recordsInitialHandled = false;
-        let goalInitialHandled = false;
-
         // 1. Subscribe to live workouts (Independent category: workouts)
         const unsubWorkouts = subscribeUserWorkouts(currentUser.uid, remoteWorkouts => {
-          const isMigrated = hasCategoryMigrated(currentUser.uid, 'workouts');
-
-          if (remoteWorkouts && remoteWorkouts.length > 0) {
-            setSessions(remoteWorkouts);
-            markCategoryMigrated(currentUser.uid, 'workouts');
-          } else if (!isMigrated && !workoutsInitialHandled) {
-            workoutsInitialHandled = true;
-            // One-time guest migration if cloud is empty on first snapshot
-            const guestSessions = localStorage.getItem('fithome_guest_user_sessions') || localStorage.getItem('fithome_user_sessions');
-            if (guestSessions) {
-              try {
-                const parsed = JSON.parse(guestSessions);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  parsed.forEach((s: WorkoutSession) => saveUserWorkoutToFirestore(currentUser.uid, s));
-                  setSessions(parsed);
-                } else {
-                  setSessions([]);
-                }
-              } catch {
-                setSessions([]);
-              }
-            } else {
-              setSessions([]);
-            }
-            markCategoryMigrated(currentUser.uid, 'workouts');
-          } else {
-            // Authorized state: collection was cleared / user deleted all records
-            setSessions([]);
-          }
-          workoutsInitialHandled = true;
+          handleCategorySnapshot(currentUser.uid, 'workouts', remoteWorkouts, setSessions);
         });
         unsubs.push(unsubWorkouts);
 
         // 2. Subscribe to live weights (Independent category: weights)
         const unsubWeights = subscribeUserWeights(currentUser.uid, remoteWeights => {
-          const isMigrated = hasCategoryMigrated(currentUser.uid, 'weights');
-
-          if (remoteWeights && remoteWeights.length > 0) {
-            setBodyWeights(remoteWeights);
-            markCategoryMigrated(currentUser.uid, 'weights');
-          } else if (!isMigrated && !weightsInitialHandled) {
-            weightsInitialHandled = true;
-            const guestWeights = localStorage.getItem('fithome_guest_body_weights_v1') || localStorage.getItem('fithome_body_weights_v1');
-            if (guestWeights) {
-              try {
-                const parsed = JSON.parse(guestWeights);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  parsed.forEach((w: WeightEntry) => saveUserWeightToFirestore(currentUser.uid, w));
-                  setBodyWeights(parsed);
-                } else {
-                  setBodyWeights([]);
-                }
-              } catch {
-                setBodyWeights([]);
-              }
-            } else {
-              setBodyWeights([]);
-            }
-            markCategoryMigrated(currentUser.uid, 'weights');
-          } else {
-            setBodyWeights([]);
-          }
-          weightsInitialHandled = true;
+          handleCategorySnapshot(currentUser.uid, 'weights', remoteWeights, setBodyWeights);
         });
         unsubs.push(unsubWeights);
 
         // 3. Subscribe to live measurements (Independent category: measurements)
         const unsubMeasurements = subscribeUserMeasurements(currentUser.uid, remoteMeasures => {
-          const isMigrated = hasCategoryMigrated(currentUser.uid, 'measurements');
-
-          if (remoteMeasures && remoteMeasures.length > 0) {
-            setBodyMeasurements(remoteMeasures);
-            markCategoryMigrated(currentUser.uid, 'measurements');
-          } else if (!isMigrated && !measurementsInitialHandled) {
-            measurementsInitialHandled = true;
-            const guestMeasures = localStorage.getItem('fithome_guest_body_measurements_v1') || localStorage.getItem('fithome_body_measurements_v1');
-            if (guestMeasures) {
-              try {
-                const parsed = JSON.parse(guestMeasures);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  parsed.forEach((m: MeasurementEntry) => saveUserMeasurementToFirestore(currentUser.uid, m));
-                  setBodyMeasurements(parsed);
-                } else {
-                  setBodyMeasurements([]);
-                }
-              } catch {
-                setBodyMeasurements([]);
-              }
-            } else {
-              setBodyMeasurements([]);
-            }
-            markCategoryMigrated(currentUser.uid, 'measurements');
-          } else {
-            setBodyMeasurements([]);
-          }
-          measurementsInitialHandled = true;
+          handleCategorySnapshot(currentUser.uid, 'measurements', remoteMeasures, setBodyMeasurements);
         });
         unsubs.push(unsubMeasurements);
 
         // 4. Subscribe to live body goal (Independent category: goals)
         const unsubGoal = subscribeUserGoal(currentUser.uid, remoteGoal => {
-          const isMigrated = hasCategoryMigrated(currentUser.uid, 'goals');
-          const hasRemoteGoal =
-            remoteGoal &&
-            typeof remoteGoal === 'object' &&
-            Object.keys(remoteGoal).length > 0 &&
-            (remoteGoal.targetWeightKg !== undefined ||
-              remoteGoal.customInitialWeightKg !== undefined ||
-              remoteGoal.heightCm !== undefined);
-
-          if (hasRemoteGoal) {
-            setBodyGoal(remoteGoal);
-            markCategoryMigrated(currentUser.uid, 'goals');
-          } else if (!isMigrated && !goalInitialHandled) {
-            goalInitialHandled = true;
-            const guestGoalStr =
-              localStorage.getItem('fithome_guest_body_goal_v1') ||
-              localStorage.getItem('fithome_body_goal_v1');
-            if (guestGoalStr) {
-              try {
-                const parsed = JSON.parse(guestGoalStr);
-                if (
-                  parsed &&
-                  typeof parsed === 'object' &&
-                  Object.keys(parsed).length > 0 &&
-                  (parsed.targetWeightKg !== undefined ||
-                    parsed.customInitialWeightKg !== undefined ||
-                    parsed.heightCm !== undefined)
-                ) {
-                  saveUserGoalToFirestore(currentUser.uid, parsed);
-                  setBodyGoal(parsed);
-                } else {
-                  setBodyGoal({});
-                }
-              } catch {
-                setBodyGoal({});
-              }
-            } else {
-              setBodyGoal({});
-            }
-            markCategoryMigrated(currentUser.uid, 'goals');
-          } else {
-            setBodyGoal({});
-          }
-          goalInitialHandled = true;
+          handleCategorySnapshot(currentUser.uid, 'goals', remoteGoal, setBodyGoal);
         });
         unsubs.push(unsubGoal);
 
         // 5. Subscribe to live PRs (Independent category: records)
         const unsubRecords = subscribeUserRecords(currentUser.uid, remoteRecords => {
-          const isMigrated = hasCategoryMigrated(currentUser.uid, 'records');
-
-          if (remoteRecords && remoteRecords.length > 0) {
-            setPersonalRecords(remoteRecords);
-            markCategoryMigrated(currentUser.uid, 'records');
-          } else if (!isMigrated && !recordsInitialHandled) {
-            recordsInitialHandled = true;
-            const guestPRs = localStorage.getItem('fithome_guest_user_prs') || localStorage.getItem('fithome_user_prs');
-            if (guestPRs) {
-              try {
-                const parsed = JSON.parse(guestPRs);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  parsed.forEach((r: PersonalRecord) => saveUserRecordToFirestore(currentUser.uid, r));
-                  setPersonalRecords(parsed);
-                } else {
-                  setPersonalRecords([]);
-                }
-              } catch {
-                setPersonalRecords([]);
-              }
-            } else {
-              setPersonalRecords([]);
-            }
-            markCategoryMigrated(currentUser.uid, 'records');
-          } else {
-            setPersonalRecords([]);
-          }
-          recordsInitialHandled = true;
+          handleCategorySnapshot(currentUser.uid, 'records', remoteRecords, setPersonalRecords);
         });
         unsubs.push(unsubRecords);
       } else {
@@ -667,7 +515,75 @@ export default function App() {
     }
   };
 
-  // Data Import with strict all-or-nothing validation & quota handling
+  // Data Restore Execution: handles atomic state update, quota safety, and async Firestore sync
+  const executeRestore = async (parsed: FitHomeBackup) => {
+    setIsRestoring(true);
+    try {
+      let photoQuotaWarning = false;
+
+      // 1. Update React state immediately
+      if (parsed.sessions) setSessions(parsed.sessions);
+      if (parsed.personalRecords) setPersonalRecords(parsed.personalRecords);
+      if (parsed.bodyWeights) setBodyWeights(parsed.bodyWeights);
+      if (parsed.bodyMeasurements) setBodyMeasurements(parsed.bodyMeasurements);
+      if (parsed.bodyGoal) setBodyGoal(parsed.bodyGoal);
+
+      // 2. Photos restoration: Local storage only with quota safety (never uploaded to Firestore!)
+      if (parsed.bodyPhotos && parsed.bodyPhotos.length > 0) {
+        try {
+          const key = getStorageKey('body_photos_v1', user?.uid);
+          localStorage.setItem(key, JSON.stringify(parsed.bodyPhotos));
+          setBodyPhotos(parsed.bodyPhotos);
+        } catch (storageErr) {
+          console.warn('Storage quota limit reached while saving photos:', storageErr);
+          photoQuotaWarning = true;
+          // Best effort memory & partial persistence
+          try {
+            const slice = parsed.bodyPhotos.slice(0, 3);
+            const key = getStorageKey('body_photos_v1', user?.uid);
+            localStorage.setItem(key, JSON.stringify(slice));
+            setBodyPhotos(slice);
+          } catch {
+            setBodyPhotos(parsed.bodyPhotos.slice(0, 3));
+          }
+        }
+      } else if (parsed.bodyPhotos) {
+        setBodyPhotos([]);
+      }
+
+      // 3. For authenticated users, sync to Firestore with Promise.all and mark categories
+      if (user) {
+        const syncResult = await syncRestoredBackupToFirestore(user.uid, parsed);
+        if (!syncResult.success) {
+          console.warn('Some restored categories failed cloud sync:', syncResult.errors);
+          setAuthError(
+            'Backup restaurado localmente! Porém, alguns registros não puderam ser sincronizados com a nuvem no momento.'
+          );
+          setTimeout(() => setAuthError(null), 6000);
+          return;
+        }
+      }
+
+      if (photoQuotaWarning) {
+        setAuthError(
+          'Dados restaurados com sucesso! No entanto, o limite de armazenamento local do navegador atingiu a cota máxima para fotos.'
+        );
+        setTimeout(() => setAuthError(null), 6000);
+      } else {
+        setSyncToast('Backup completo importado com sucesso!');
+        setTimeout(() => setSyncToast(null), 3500);
+      }
+    } catch (err) {
+      console.error('Import processing error:', err);
+      setAuthError('Erro inesperado ao processar o arquivo de backup.');
+      setTimeout(() => setAuthError(null), 4000);
+    } finally {
+      setIsRestoring(false);
+      setPendingRestoreBackup(null);
+    }
+  };
+
+  // Data Import with strict all-or-nothing validation, user confirmation, & quota handling
   const handleImportData = (file: File) => {
     if (!file) return;
 
@@ -696,73 +612,22 @@ export default function App() {
         }
 
         const parsed = validation.data;
-        let photoQuotaWarning = false;
+        const hasExistingData =
+          sessions.length > 0 ||
+          personalRecords.length > 0 ||
+          bodyWeights.length > 0 ||
+          bodyMeasurements.length > 0 ||
+          (bodyGoal && Object.keys(bodyGoal).length > 0) ||
+          bodyPhotos.length > 0;
 
-        if (parsed.sessions) {
-          setSessions(parsed.sessions);
-          if (user) {
-            parsed.sessions.forEach((s: WorkoutSession) => saveUserWorkoutToFirestore(user.uid, s));
-            markCategoryMigrated(user.uid, 'workouts');
-          }
-        }
-
-        if (parsed.personalRecords) {
-          setPersonalRecords(parsed.personalRecords);
-          if (user) {
-            parsed.personalRecords.forEach((r: PersonalRecord) => saveUserRecordToFirestore(user.uid, r));
-            markCategoryMigrated(user.uid, 'records');
-          }
-        }
-
-        if (parsed.bodyWeights) {
-          setBodyWeights(parsed.bodyWeights);
-          if (user) {
-            parsed.bodyWeights.forEach((w: WeightEntry) => saveUserWeightToFirestore(user.uid, w));
-            markCategoryMigrated(user.uid, 'weights');
-          }
-        }
-
-        if (parsed.bodyMeasurements) {
-          setBodyMeasurements(parsed.bodyMeasurements);
-          if (user) {
-            parsed.bodyMeasurements.forEach((m: MeasurementEntry) => saveUserMeasurementToFirestore(user.uid, m));
-            markCategoryMigrated(user.uid, 'measurements');
-          }
-        }
-
-        if (parsed.bodyGoal) {
-          setBodyGoal(parsed.bodyGoal);
-          if (user) {
-            saveUserGoalToFirestore(user.uid, parsed.bodyGoal);
-            markCategoryMigrated(user.uid, 'goals');
-          }
-        }
-
-        // Photos restoration: Local storage only (never uploaded to Firestore!)
-        if (parsed.bodyPhotos) {
-          try {
-            const key = getStorageKey('body_photos_v1', user?.uid);
-            localStorage.setItem(key, JSON.stringify(parsed.bodyPhotos));
-            setBodyPhotos(parsed.bodyPhotos);
-          } catch (storageErr) {
-            console.warn('Storage quota limit reached while saving photos:', storageErr);
-            photoQuotaWarning = true;
-            // Best effort memory load
-            setBodyPhotos(parsed.bodyPhotos.slice(0, 5));
-          }
-        }
-
-        if (photoQuotaWarning) {
-          setAuthError(
-            'Dados restaurados com sucesso! No entanto, o limite de armazenamento local do navegador atingiu a cota máxima para fotos.'
-          );
-          setTimeout(() => setAuthError(null), 6000);
+        if (hasExistingData) {
+          // Solicit user confirmation before overwriting existing data
+          setPendingRestoreBackup(parsed);
         } else {
-          setSyncToast('Backup completo importado com sucesso!');
-          setTimeout(() => setSyncToast(null), 3500);
+          executeRestore(parsed);
         }
       } catch (err) {
-        console.error('Import processing error:', err);
+        console.error('Import reading error:', err);
         setAuthError('Erro inesperado ao processar o arquivo de backup.');
         setTimeout(() => setAuthError(null), 4000);
       }
@@ -1048,6 +913,16 @@ export default function App() {
           previousRecords={personalRecords}
           onSaveWorkout={handleSaveWorkout}
           onClose={() => setIsWorkoutActive(false)}
+        />
+      )}
+
+      {/* Backup Restoration Confirmation Modal */}
+      {pendingRestoreBackup && (
+        <RestoreConfirmModal
+          backup={pendingRestoreBackup}
+          onConfirm={() => executeRestore(pendingRestoreBackup)}
+          onClose={() => setPendingRestoreBackup(null)}
+          isRestoring={isRestoring}
         />
       )}
     </div>
