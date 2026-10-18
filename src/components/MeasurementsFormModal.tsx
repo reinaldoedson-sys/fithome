@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MeasurementEntry, BodyMeasurements, MEASUREMENT_LABELS, MeasurementKey } from '../types/bodyEvolution';
 import { getTodayDateString, parseDecimalInput, formatDateBR } from '../utils/bodyDateUtils';
+import { useLanguage } from '../i18n/LanguageContext';
 import { X, Ruler, Trash2, AlertCircle } from 'lucide-react';
 
 interface MeasurementsFormModalProps {
@@ -16,6 +17,7 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
   onDelete,
   onClose
 }) => {
+  const { language, t } = useLanguage();
   const [date, setDate] = useState(() => {
     if (initialEntry?.date) {
       return initialEntry.date.split('T')[0];
@@ -35,6 +37,12 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
   const [notes, setNotes] = useState(() => initialEntry?.notes || '');
   const [error, setError] = useState<string | null>(null);
 
+  const getMeasurementName = (key: MeasurementKey) => {
+    if (language === 'en') return MEASUREMENT_LABELS[key].en;
+    if (language === 'es') return MEASUREMENT_LABELS[key].es;
+    return MEASUREMENT_LABELS[key].name;
+  };
+
   const handleFieldChange = (key: MeasurementKey, value: string) => {
     setMeasurements(prev => ({
       ...prev,
@@ -47,7 +55,13 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
     setError(null);
 
     if (!date) {
-      setError('Por favor, informe a data da medição.');
+      setError(
+        language === 'en'
+          ? 'Please provide the measurement date.'
+          : language === 'es'
+          ? 'Por favor, introduce la fecha de medición.'
+          : 'Por favor, informe a data da medição.'
+      );
       return;
     }
 
@@ -60,7 +74,7 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
       if (raw !== '') {
         const val = parseDecimalInput(raw);
         if (val === null || val <= 0 || val < 5 || val > 300) {
-          invalidFieldName = MEASUREMENT_LABELS[k].name;
+          invalidFieldName = getMeasurementName(k);
         } else {
           validMeasurements[k] = Number(val.toFixed(1));
           atLeastOneFilled = true;
@@ -69,12 +83,24 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
     });
 
     if (invalidFieldName) {
-      setError(`O valor informado para "${invalidFieldName}" é inválido. Digite um número entre 5 e 300 cm.`);
+      setError(
+        language === 'en'
+          ? `The value for "${invalidFieldName}" is invalid. Enter a number between 5 and 300 cm.`
+          : language === 'es'
+          ? `El valor para "${invalidFieldName}" no es válido. Ingresa un número entre 5 y 300 cm.`
+          : `O valor informado para "${invalidFieldName}" é inválido. Digite um número entre 5 e 300 cm.`
+      );
       return;
     }
 
     if (!atLeastOneFilled) {
-      setError('Preencha ao menos uma medida corporal para salvar o registro.');
+      setError(
+        language === 'en'
+          ? 'Fill in at least one body measurement to save.'
+          : language === 'es'
+          ? 'Rellena al menos una medida corporal para guardar.'
+          : 'Preencha ao menos uma medida corporal para salvar o registro.'
+      );
       return;
     }
 
@@ -98,10 +124,16 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-slate-100 text-base sm:text-lg">
-                {initialEntry ? 'Editar Medidas Corporais' : 'Registrar Medidas Corporais'}
+                {initialEntry
+                  ? (language === 'en' ? 'Edit Body Measurements' : language === 'es' ? 'Editar Medidas Corporales' : 'Editar Medidas Corporais')
+                  : (language === 'en' ? 'Log Body Measurements' : language === 'es' ? 'Registrar Medidas Corporales' : 'Registrar Medidas Corporais')}
               </h3>
               <p className="text-xs text-slate-400">
-                Preencha apenas as regiões que você deseja acompanhar hoje (aceita vírgula ou ponto).
+                {language === 'en'
+                  ? 'Fill only the body areas you wish to track today.'
+                  : language === 'es'
+                  ? 'Rellena solo las áreas que deseas registrar hoy.'
+                  : 'Preencha apenas as regiões que você deseja acompanhar hoje (aceita vírgula ou ponto).'}
               </p>
             </div>
           </div>
@@ -125,7 +157,7 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Data da Medição
+                {language === 'en' ? 'Date' : language === 'es' ? 'Fecha' : 'Data da Medição'}
               </label>
               <input
                 type="date"
@@ -141,45 +173,48 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-slate-300">
-                Medidas Corporais (cm)
+                {language === 'en' ? 'Body Measurements (cm)' : language === 'es' ? 'Medidas Corporales (cm)' : 'Medidas Corporais (cm)'}
               </span>
               <span className="text-[11px] text-slate-500">
-                Campos não preenchidos serão mantidos em branco
+                {language === 'en' ? 'Unfilled fields will be left blank' : language === 'es' ? 'Campos sin rellenar quedarán en blanco' : 'Campos não preenchidos serão mantidos em branco'}
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              {(Object.keys(MEASUREMENT_LABELS) as MeasurementKey[]).map(key => (
-                <div key={key} className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5">
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1 truncate" title={MEASUREMENT_LABELS[key].name}>
-                    {MEASUREMENT_LABELS[key].name}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*[.,]?[0-9]*"
-                      placeholder="Ex: 82,5"
-                      value={measurements[key]}
-                      onChange={e => handleFieldChange(key, e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700/80 rounded-lg py-1 px-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 tabular-nums pr-8"
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 font-bold pointer-events-none">
-                      cm
-                    </span>
+              {(Object.keys(MEASUREMENT_LABELS) as MeasurementKey[]).map(key => {
+                const label = getMeasurementName(key);
+                return (
+                  <div key={key} className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5">
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1 truncate" title={label}>
+                      {label}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
+                        placeholder="Ex: 82.5"
+                        value={measurements[key]}
+                        onChange={e => handleFieldChange(key, e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700/80 rounded-lg py-1 px-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 tabular-nums pr-8"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 font-bold pointer-events-none">
+                        cm
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Observações <span className="text-slate-500 font-normal">(Opcional)</span>
+              {language === 'en' ? 'Notes (Optional)' : language === 'es' ? 'Notas (Opcional)' : 'Observações (Opcional)'}
             </label>
             <textarea
               rows={2}
-              placeholder="Ex: Fita métrica alinhada pela cicatriz umbilical, medição relaxada..."
+              placeholder={language === 'en' ? 'Ex: Measuring tape relaxed, around navel...' : language === 'es' ? 'Ej: Cinta métrica relajada, a la altura del ombligo...' : 'Ex: Fita métrica alinhada pela cicatriz umbilical, medição relaxada...'}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -191,14 +226,20 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm(`Deseja realmente excluir as medidas registradas em ${formatDateBR(initialEntry.date)}?`)) {
+                  const confirmMsg =
+                    language === 'en'
+                      ? `Delete measurements recorded on ${formatDateBR(initialEntry.date)}?`
+                      : language === 'es'
+                      ? `¿Eliminar medidas registradas el ${formatDateBR(initialEntry.date)}?`
+                      : `Deseja realmente excluir as medidas registradas em ${formatDateBR(initialEntry.date)}?`;
+                  if (confirm(confirmMsg)) {
                     onDelete(initialEntry.id);
                   }
                 }}
                 className="px-3 py-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Excluir</span>
+                <span>{t.common.delete}</span>
               </button>
             ) : (
               <div />
@@ -210,13 +251,13 @@ export const MeasurementsFormModal: React.FC<MeasurementsFormModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
               >
-                Cancelar
+                {t.common.cancel}
               </button>
               <button
                 type="submit"
                 className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
               >
-                {initialEntry ? 'Salvar Alterações' : 'Salvar Medidas'}
+                {t.common.save}
               </button>
             </div>
           </div>

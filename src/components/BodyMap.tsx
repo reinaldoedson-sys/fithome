@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MuscleGroup } from '../types/workout';
 import { MUSCLE_LABELS, EXERCISES } from '../data/exercises';
 import { RotateCw, Check } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface BodyMapProps {
   selectedMuscles: MuscleGroup[];
@@ -14,6 +15,7 @@ export const BodyMap: React.FC<BodyMapProps> = ({
   onToggleMuscle,
   onClearSelection
 }) => {
+  const { language, t } = useLanguage();
   const [view, setView] = useState<'front' | 'back'>('front');
   const [hoveredMuscle, setHoveredMuscle] = useState<MuscleGroup | null>(null);
 
@@ -52,7 +54,7 @@ export const BodyMap: React.FC<BodyMapProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Vista Anterior (Frente)
+              {t.bodyMap.frontView}
             </button>
             <button
               type="button"
@@ -63,7 +65,7 @@ export const BodyMap: React.FC<BodyMapProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Vista Posterior (Costas)
+              {t.bodyMap.backView}
             </button>
           </div>
 
@@ -71,10 +73,10 @@ export const BodyMap: React.FC<BodyMapProps> = ({
             type="button"
             onClick={() => setView(v => (v === 'front' ? 'back' : 'front'))}
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-colors"
-            title="Girar modelo anatômico"
+            title={t.bodyMap.rotate}
           >
             <RotateCw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Girar</span>
+            <span className="hidden sm:inline">{t.bodyMap.rotate}</span>
           </button>
         </div>
 
@@ -333,8 +335,11 @@ export const BodyMap: React.FC<BodyMapProps> = ({
           {/* Floating Hover Indicator */}
           {hoveredMuscle && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-emerald-500/50 text-slate-100 text-xs py-1 px-3 rounded-lg pointer-events-none whitespace-nowrap shadow-lg">
-              <span className="font-semibold text-emerald-400">{MUSCLE_LABELS[hoveredMuscle].pt}</span>
-              <span className="text-slate-400 ml-1.5">({getExerciseCount(hoveredMuscle)} exercícios)</span>
+              <span className="font-semibold text-emerald-400">{MUSCLE_LABELS[hoveredMuscle][language] || MUSCLE_LABELS[hoveredMuscle].pt}</span>
+              <span className="text-slate-400 ml-1.5">
+                ({getExerciseCount(hoveredMuscle)}{' '}
+                {language === 'en' ? 'exercises' : language === 'es' ? 'ejercicios' : 'exercícios'})
+              </span>
             </div>
           )}
         </div>
@@ -345,7 +350,7 @@ export const BodyMap: React.FC<BodyMapProps> = ({
         <div>
           <div className="flex items-center justify-between mb-2.5">
             <h4 className="text-sm font-semibold text-slate-200">
-              Músculos Alvo
+              {t.bodyMap.selectedMuscles}
             </h4>
             {selectedMuscles.length > 0 && onClearSelection && (
               <button
@@ -353,13 +358,13 @@ export const BodyMap: React.FC<BodyMapProps> = ({
                 onClick={onClearSelection}
                 className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
               >
-                Limpar ({selectedMuscles.length})
+                {t.bodyMap.clearSelection(selectedMuscles.length)}
               </button>
             )}
           </div>
 
           <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-            Clique no corpo humano ou nos botões para filtrar os exercícios específicos para seu treino.
+            {t.bodyMap.instructions}
           </p>
 
           {/* Quick toggle chips */}
@@ -367,6 +372,7 @@ export const BodyMap: React.FC<BodyMapProps> = ({
             {(Object.keys(MUSCLE_LABELS) as MuscleGroup[]).map(muscle => {
               const active = isSelected(muscle);
               const count = getExerciseCount(muscle);
+              const muscleLabel = MUSCLE_LABELS[muscle][language] || MUSCLE_LABELS[muscle].pt;
               return (
                 <button
                   key={muscle}
@@ -380,7 +386,7 @@ export const BodyMap: React.FC<BodyMapProps> = ({
                       : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/50'
                   }`}
                 >
-                  <span className="truncate pr-1">{MUSCLE_LABELS[muscle].pt}</span>
+                  <span className="truncate pr-1">{muscleLabel}</span>
                   {active ? (
                     <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   ) : (
@@ -394,8 +400,8 @@ export const BodyMap: React.FC<BodyMapProps> = ({
 
         {/* Informative helper at bottom */}
         <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-          <span>Selecionados: <strong className="text-slate-200 tabular-nums">{selectedMuscles.length}</strong></span>
-          <span className="text-slate-500">Toque para isolar</span>
+          <span>{t.bodyMap.selectedCount(selectedMuscles.length)}</span>
+          <span className="text-slate-500">{t.bodyMap.tapToIsolate}</span>
         </div>
       </div>
     </div>

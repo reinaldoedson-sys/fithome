@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { RoutineTemplate, MuscleGroup, HomeEquipment } from '../types/workout';
 import { EXERCISES, MUSCLE_LABELS, HOME_EQUIPMENT_LABELS } from '../data/exercises';
+import { useLanguage } from '../i18n/LanguageContext';
+import { getExerciseName } from '../utils/i18nHelpers';
 import {
   X,
   Plus,
@@ -32,15 +34,16 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
   onSave,
   onClose
 }) => {
+  const { language, t } = useLanguage();
   const [name, setName] = useState(initialRoutine?.name || '');
   const [description, setDescription] = useState(initialRoutine?.description || '');
   const [durationMinutes, setDurationMinutes] = useState(initialRoutine?.durationMinutes || 25);
   const [apartmentFriendly, setApartmentFriendly] = useState(initialRoutine?.apartmentFriendly || false);
   const [selectedExercises, setSelectedExercises] = useState<RoutineExerciseItem[]>(
     initialRoutine?.exercises || [
-      { exerciseId: 'pushup_standard', defaultSets: 3, defaultTarget: 12 },
-      { exerciseId: 'squat_bodyweight', defaultSets: 3, defaultTarget: 15 },
-      { exerciseId: 'plank_floor', defaultSets: 3, defaultTarget: 45 }
+      { exerciseId: 'pushup-standard', defaultSets: 3, defaultTarget: 12 },
+      { exerciseId: 'air-squat', defaultSets: 3, defaultTarget: 15 },
+      { exerciseId: 'plank-forearms', defaultSets: 3, defaultTarget: 45 }
     ]
   );
 
@@ -50,9 +53,11 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
 
   // Filter exercises to add
   const availableExercises = EXERCISES.filter(ex => {
+    const exName = getExerciseName(ex, language).toLowerCase();
     const matchesSearch =
       ex.namePt.toLowerCase().includes(searchExercise.toLowerCase()) ||
-      ex.name.toLowerCase().includes(searchExercise.toLowerCase());
+      ex.name.toLowerCase().includes(searchExercise.toLowerCase()) ||
+      exName.includes(searchExercise.toLowerCase());
     const matchesMuscle =
       selectedCategory === 'all' || ex.primaryMuscle === selectedCategory;
     return matchesSearch && matchesMuscle;
@@ -109,12 +114,24 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
     e.preventDefault();
 
     if (!name.trim()) {
-      setErrorMsg('Por favor, informe um nome para a sua rotina.');
+      setErrorMsg(
+        language === 'en'
+          ? 'Please enter a name for your routine.'
+          : language === 'es'
+          ? 'Por favor, ingresa un nombre para tu rutina.'
+          : 'Por favor, informe um nome para a sua rotina.'
+      );
       return;
     }
 
     if (selectedExercises.length === 0) {
-      setErrorMsg('Adicione pelo menos 1 exercício à rotina.');
+      setErrorMsg(
+        language === 'en'
+          ? 'Add at least 1 exercise to the routine.'
+          : language === 'es'
+          ? 'Añade al menos 1 ejercicio a la rutina.'
+          : 'Adicione pelo menos 1 exercício à rotina.'
+      );
       return;
     }
 
@@ -136,7 +153,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
     const routineToSave: RoutineTemplate = {
       id: initialRoutine?.id || `custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       name: name.trim(),
-      description: description.trim() || 'Rotina personalizada criada pelo usuário',
+      description: description.trim() || (language === 'en' ? 'Custom workout routine created by user' : language === 'es' ? 'Rutina personalizada creada por el usuario' : 'Rotina personalizada criada pelo usuário'),
       targetMuscles: Array.from(musclesSet),
       equipmentNeeded: Array.from(equipmentSet),
       durationMinutes: Math.max(5, durationMinutes),
@@ -161,9 +178,13 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-white">
-                {initialRoutine ? 'Editar Rotina Personalizada' : 'Criar Nova Rotina de Treino'}
+                {initialRoutine
+                  ? (language === 'en' ? 'Edit Custom Routine' : language === 'es' ? 'Editar Rutina Personalizada' : 'Editar Rotina Personalizada')
+                  : (language === 'en' ? 'Create New Home Routine' : language === 'es' ? 'Crear Nueva Rutina en Casa' : 'Criar Nova Rotina de Treino')}
               </h3>
-              <p className="text-xs text-slate-400">Monte um treino customizado com seus exercícios favoritos</p>
+              <p className="text-xs text-slate-400">
+                {language === 'en' ? 'Build a custom workout with your favorite exercises' : language === 'es' ? 'Crea un entrenamiento personalizado con tus ejercicios favoritos' : 'Monte um treino customizado com seus exercícios favoritos'}
+              </p>
             </div>
           </div>
           <button
@@ -188,7 +209,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
           <div className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Nome da Rotina *
+                {language === 'en' ? 'Routine Name *' : language === 'es' ? 'Nombre de la Rutina *' : 'Nome da Rotina *'}
               </label>
               <input
                 type="text"
@@ -198,20 +219,20 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                   setName(e.target.value);
                   setErrorMsg(null);
                 }}
-                placeholder="Ex: Treino A - Peito e Braços em Casa"
+                placeholder={language === 'en' ? 'Ex: Routine A - Chest & Arms at Home' : language === 'es' ? 'Ej: Rutina A - Pecho y Brazos en Casa' : 'Ex: Treino A - Peito e Braços em Casa'}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition-colors"
               />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Descrição ou Dicas do Treino
+                {language === 'en' ? 'Description or Tips' : language === 'es' ? 'Descripción o Consejos' : 'Descrição ou Dicas do Treino'}
               </label>
               <input
                 type="text"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Ex: Foco em sobrecarga progressiva com mochila e flexões"
+                placeholder={language === 'en' ? 'Ex: Focus on progressive overload with backpack and pushups' : language === 'es' ? 'Ej: Enfoque en sobrecarga progresiva con mochila y flexiones' : 'Ex: Foco em sobrecarga progressiva com mochila e flexões'}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition-colors"
               />
             </div>
@@ -219,7 +240,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Duração Estimada (minutos)
+                  {language === 'en' ? 'Estimated Duration (minutes)' : language === 'es' ? 'Duración Estimada (minutos)' : 'Duração Estimada (minutos)'}
                 </label>
                 <div className="relative">
                   <input
@@ -244,7 +265,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                   />
                   <span className="flex items-center gap-1.5">
                     <VolumeX className="w-4 h-4 text-emerald-400" />
-                    <span>Silencioso (Sem barulho / apartamento)</span>
+                    <span>{t.routines.apartmentFriendly}</span>
                   </span>
                 </label>
               </div>
@@ -256,12 +277,14 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>Exercícios da Rotina</span>
+                  <span>{t.routines.exercisesInRoutine}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
                     {selectedExercises.length}
                   </span>
                 </h4>
-                <p className="text-xs text-slate-400">Defina a ordem, séries e metas de repetições/tempo</p>
+                <p className="text-xs text-slate-400">
+                  {language === 'en' ? 'Set order, sets count, and target reps/seconds' : language === 'es' ? 'Define el orden, series y metas de repeticiones/tiempo' : 'Defina a ordem, séries e metas de repetições/tempo'}
+                </p>
               </div>
             </div>
 
@@ -270,6 +293,9 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
               {selectedExercises.map((item, idx) => {
                 const meta = EXERCISES.find(e => e.id === item.exerciseId);
                 const isSeconds = meta?.measurementType === 'seconds';
+                const exName = meta ? getExerciseName(meta, language) : item.exerciseId;
+                const muscleLabel = meta ? (MUSCLE_LABELS[meta.primaryMuscle][language] || MUSCLE_LABELS[meta.primaryMuscle].pt) : '';
+                const eqLabel = meta ? (HOME_EQUIPMENT_LABELS[meta.equipment][language] || HOME_EQUIPMENT_LABELS[meta.equipment].pt) : '';
 
                 return (
                   <div
@@ -283,7 +309,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                           disabled={idx === 0}
                           onClick={() => handleMoveUp(idx)}
                           className="text-slate-500 hover:text-slate-200 disabled:opacity-20 p-0.5"
-                          title="Mover para cima"
+                          title="Up"
                         >
                           <ChevronUp className="w-3.5 h-3.5" />
                         </button>
@@ -292,7 +318,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                           disabled={idx === selectedExercises.length - 1}
                           onClick={() => handleMoveDown(idx)}
                           className="text-slate-500 hover:text-slate-200 disabled:opacity-20 p-0.5"
-                          title="Mover para baixo"
+                          title="Down"
                         >
                           <ChevronDown className="w-3.5 h-3.5" />
                         </button>
@@ -304,10 +330,10 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
 
                       <div className="min-w-0 flex-1">
                         <h5 className="font-semibold text-xs sm:text-sm text-slate-100 truncate">
-                          {meta?.namePt || item.exerciseId}
+                          {exName}
                         </h5>
                         <p className="text-[11px] text-slate-400 truncate">
-                          {meta ? MUSCLE_LABELS[meta.primaryMuscle]?.pt : ''} · {meta ? HOME_EQUIPMENT_LABELS[meta.equipment]?.pt : ''}
+                          {muscleLabel} · {eqLabel}
                         </p>
                       </div>
                     </div>
@@ -315,7 +341,9 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                     {/* Sets & Target Inputs */}
                     <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                       <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                        <label className="text-slate-400">Séries:</label>
+                        <label className="text-slate-400">
+                          {language === 'en' ? 'Sets:' : language === 'es' ? 'Series:' : 'Séries:'}
+                        </label>
                         <input
                           type="number"
                           min="1"
@@ -327,7 +355,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                        <label className="text-slate-400">{isSeconds ? 'Segundos:' : 'Reps:'}</label>
+                        <label className="text-slate-400">{isSeconds ? (language === 'en' ? 'Sec:' : 'Seg:') : 'Reps:'}</label>
                         <input
                           type="number"
                           min="1"
@@ -342,7 +370,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                         type="button"
                         onClick={() => handleRemoveExercise(idx)}
                         className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-                        title="Remover exercício"
+                        title={t.common.delete}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -355,7 +383,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
             {/* Add Exercise Selector Box */}
             <div className="p-3.5 bg-slate-950/40 border border-dashed border-slate-800 rounded-xl space-y-3">
               <span className="text-xs font-semibold text-slate-300 block">
-                + Adicionar Exercício ao Treino:
+                {language === 'en' ? '+ Add Exercise to Routine:' : language === 'es' ? '+ Añadir Ejercicio a la Rutina:' : '+ Adicionar Exercício ao Treino:'}
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -364,7 +392,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                     type="text"
                     value={searchExercise}
                     onChange={e => setSearchExercise(e.target.value)}
-                    placeholder="Buscar por nome..."
+                    placeholder={t.common.search}
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                   />
                   <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
@@ -375,10 +403,10 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                   onChange={e => setSelectedCategory(e.target.value)}
                   className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="all">Todos os Músculos</option>
+                  <option value="all">{language === 'en' ? 'All Muscles' : language === 'es' ? 'Todos los Músculos' : 'Todos os Músculos'}</option>
                   {Object.entries(MUSCLE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>
-                      {v.pt}
+                      {v[language] || v.pt}
                     </option>
                   ))}
                 </select>
@@ -388,6 +416,9 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
               <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                 {availableExercises.slice(0, 15).map(ex => {
                   const isAlreadyAdded = selectedExercises.some(se => se.exerciseId === ex.id);
+                  const exName = getExerciseName(ex, language);
+                  const muscleLabel = MUSCLE_LABELS[ex.primaryMuscle][language] || MUSCLE_LABELS[ex.primaryMuscle].pt;
+                  const eqLabel = HOME_EQUIPMENT_LABELS[ex.equipment][language] || HOME_EQUIPMENT_LABELS[ex.equipment].pt;
 
                   return (
                     <div
@@ -395,9 +426,9 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                       className="flex items-center justify-between p-2 bg-slate-900/80 hover:bg-slate-850 rounded-lg text-xs transition-colors"
                     >
                       <div className="min-w-0 pr-2">
-                        <span className="font-medium text-slate-200 block truncate">{ex.namePt}</span>
+                        <span className="font-medium text-slate-200 block truncate">{exName}</span>
                         <span className="text-[10px] text-slate-400">
-                          {MUSCLE_LABELS[ex.primaryMuscle]?.pt} · {HOME_EQUIPMENT_LABELS[ex.equipment]?.pt}
+                          {muscleLabel} · {eqLabel}
                         </span>
                       </div>
 
@@ -411,7 +442,7 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
                         }`}
                       >
                         <Plus className="w-3 h-3" />
-                        <span>Adicionar</span>
+                        <span>{language === 'en' ? 'Add' : language === 'es' ? 'Añadir' : 'Adicionar'}</span>
                       </button>
                     </div>
                   );
@@ -427,14 +458,14 @@ export const CustomRoutineModal: React.FC<CustomRoutineModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition-colors"
             >
-              Cancelar
+              {t.common.cancel}
             </button>
             <button
               type="submit"
               className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition-colors shadow-md shadow-emerald-500/20 flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              <span>{initialRoutine ? 'Salvar Alterações' : 'Criar Rotina'}</span>
+              <span>{initialRoutine ? (language === 'en' ? 'Save Changes' : language === 'es' ? 'Guardar Cambios' : 'Salvar Alterações') : (language === 'en' ? 'Create Routine' : language === 'es' ? 'Crear Rutina' : 'Criar Rotina')}</span>
             </button>
           </div>
         </form>

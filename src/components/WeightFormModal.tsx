@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { WeightEntry } from '../types/bodyEvolution';
 import { getTodayDateString, parseDecimalInput, formatDateBR } from '../utils/bodyDateUtils';
+import { useLanguage } from '../i18n/LanguageContext';
 import { X, Scale, Trash2, AlertCircle } from 'lucide-react';
 
 interface WeightFormModalProps {
@@ -16,6 +17,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
   onDelete,
   onClose
 }) => {
+  const { language, t } = useLanguage();
   const [date, setDate] = useState(() => {
     if (initialEntry?.date) {
       return initialEntry.date.split('T')[0];
@@ -36,15 +38,33 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
 
     const val = parseDecimalInput(weightInput);
     if (val === null || val <= 0) {
-      setError('Por favor, informe um peso válido e maior que zero (ex: 74,5 ou 74.5).');
+      setError(
+        language === 'en'
+          ? 'Please provide a valid weight greater than zero (e.g., 74.5).'
+          : language === 'es'
+          ? 'Por favor, introduce un peso válido mayor que cero (ej: 74,5).'
+          : 'Por favor, informe um peso válido e maior que zero (ex: 74,5 ou 74.5).'
+      );
       return;
     }
     if (val < 20 || val > 400) {
-      setError('O peso informado deve estar entre 20 kg e 400 kg.');
+      setError(
+        language === 'en'
+          ? 'Weight must be between 20 kg and 400 kg.'
+          : language === 'es'
+          ? 'El peso debe estar entre 20 kg y 400 kg.'
+          : 'O peso informado deve estar entre 20 kg e 400 kg.'
+      );
       return;
     }
     if (!date) {
-      setError('Por favor, informe a data da pesagem.');
+      setError(
+        language === 'en'
+          ? 'Please provide the weighing date.'
+          : language === 'es'
+          ? 'Por favor, introduce la fecha del pesaje.'
+          : 'Por favor, informe a data da pesagem.'
+      );
       return;
     }
 
@@ -67,7 +87,9 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
               <Scale className="w-4 h-4" />
             </div>
             <h3 className="font-bold text-slate-100 text-base sm:text-lg">
-              {initialEntry ? 'Editar Registro de Peso' : 'Registrar Novo Peso'}
+              {initialEntry
+                ? (language === 'en' ? 'Edit Weight Log' : language === 'es' ? 'Editar Registro de Peso' : 'Editar Registro de Peso')
+                : (language === 'en' ? 'Log New Weight' : language === 'es' ? 'Registrar Nuevo Peso' : 'Registrar Novo Peso')}
             </h3>
           </div>
           <button
@@ -89,7 +111,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Data da Pesagem
+              {language === 'en' ? 'Date' : language === 'es' ? 'Fecha' : 'Data da Pesagem'}
             </label>
             <input
               type="date"
@@ -100,20 +122,24 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
               required
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Você pode registrar o peso de hoje ou de datas anteriores.
+              {language === 'en'
+                ? 'You can log today weight or backdate previous measurements.'
+                : language === 'es'
+                ? 'Puedes registrar el peso de hoy o de fechas anteriores.'
+                : 'Você pode registrar o peso de hoje ou de datas anteriores.'}
             </p>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Peso (kg) <span className="text-slate-500 font-normal">aceita vírgula ou ponto</span>
+              {language === 'en' ? 'Weight (kg)' : language === 'es' ? 'Peso (kg)' : 'Peso (kg)'}
             </label>
             <div className="relative">
               <input
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*[.,]?[0-9]*"
-                placeholder="Ex: 74,5"
+                placeholder="Ex: 74.5"
                 value={weightInput}
                 onChange={e => setWeightInput(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-base font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 tabular-nums pr-12"
@@ -128,11 +154,11 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Observações <span className="text-slate-500 font-normal">(Opcional)</span>
+              {language === 'en' ? 'Notes (Optional)' : language === 'es' ? 'Notas (Opcional)' : 'Observações (Opcional)'}
             </label>
             <textarea
               rows={2}
-              placeholder="Ex: Em jejum, logo ao acordar..."
+              placeholder={language === 'en' ? 'Ex: Fasted, right after waking up...' : language === 'es' ? 'Ej: En ayunas, nada más despertar...' : 'Ex: Em jejum, logo ao acordar...'}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -144,14 +170,20 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm(`Deseja excluir a pesagem de ${initialEntry.weightKg} kg do dia ${formatDateBR(initialEntry.date)}?`)) {
+                  const confirmMsg =
+                    language === 'en'
+                      ? `Delete log of ${initialEntry.weightKg} kg on ${formatDateBR(initialEntry.date)}?`
+                      : language === 'es'
+                      ? `¿Eliminar pesaje de ${initialEntry.weightKg} kg del ${formatDateBR(initialEntry.date)}?`
+                      : `Deseja excluir a pesagem de ${initialEntry.weightKg} kg do dia ${formatDateBR(initialEntry.date)}?`;
+                  if (confirm(confirmMsg)) {
                     onDelete(initialEntry.id);
                   }
                 }}
                 className="px-3 py-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Excluir</span>
+                <span>{t.common.delete}</span>
               </button>
             ) : (
               <div />
@@ -163,13 +195,13 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
               >
-                Cancelar
+                {t.common.cancel}
               </button>
               <button
                 type="submit"
                 className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
               >
-                {initialEntry ? 'Salvar Alterações' : 'Salvar Pesagem'}
+                {t.common.save}
               </button>
             </div>
           </div>

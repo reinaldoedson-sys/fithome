@@ -524,13 +524,25 @@ export default function App() {
       }
       return [routine, ...prev];
     });
-    setSyncToast('Rotina personalizada salva!');
+    setSyncToast(
+      language === 'en'
+        ? 'Custom routine saved!'
+        : language === 'es'
+        ? '¡Rutina personalizada guardada!'
+        : 'Rotina personalizada salva!'
+    );
     setTimeout(() => setSyncToast(null), 3000);
   };
 
   const handleDeleteCustomRoutine = (routineId: string) => {
     setCustomRoutines(prev => prev.filter(r => r.id !== routineId));
-    setSyncToast('Rotina personalizada removida.');
+    setSyncToast(
+      language === 'en'
+        ? 'Custom routine removed.'
+        : language === 'es'
+        ? 'Rutina personalizada eliminada.'
+        : 'Rotina personalizada removida.'
+    );
     setTimeout(() => setSyncToast(null), 3000);
   };
 
@@ -558,11 +570,23 @@ export default function App() {
       a.download = `fithome_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      setSyncToast('Backup completo exportado com sucesso!');
+      setSyncToast(
+        language === 'en'
+          ? 'Full backup successfully exported!'
+          : language === 'es'
+          ? '¡Copia de seguridad completa exportada con éxito!'
+          : 'Backup completo exportado com sucesso!'
+      );
       setTimeout(() => setSyncToast(null), 3000);
     } catch (err) {
       console.error('Export error:', err);
-      setAuthError('Falha ao gerar o arquivo de backup.');
+      setAuthError(
+        language === 'en'
+          ? 'Failed to generate backup file.'
+          : language === 'es'
+          ? 'Error al generar el archivo de copia de seguridad.'
+          : 'Falha ao gerar o arquivo de backup.'
+      );
       setTimeout(() => setAuthError(null), 4000);
     }
   };
@@ -598,22 +622,44 @@ export default function App() {
       // 2. Feedback reporting
       if (result.isPartial) {
         setAuthError(
-          `Restauração parcial: dados locais atualizados, mas houve falha na nuvem (${result.errors.join(', ')}). Você pode tentar novamente.`
+          language === 'en'
+            ? `Partial restore: local data updated, but cloud sync had errors (${result.errors.join(', ')}). You can try again.`
+            : language === 'es'
+            ? `Restauración parcial: datos locales actualizados, pero hubo error en la nube (${result.errors.join(', ')}). Puedes intentarlo de nuevo.`
+            : `Restauração parcial: dados locais atualizados, mas houve falha na nuvem (${result.errors.join(', ')}). Você pode tentar novamente.`
         );
         setTimeout(() => setAuthError(null), 7000);
       } else if (result.photoQuotaExceeded) {
         setAuthError(
-          'Backup restaurado! Porém, o limite de espaço de armazenamento local do navegador foi atingido para fotos corporais.'
+          language === 'en'
+            ? 'Backup restored! However, browser local storage quota was reached for progress photos.'
+            : language === 'es'
+            ? '¡Copia restaurada! Sin embargo, se alcanzó el límite de almacenamiento del navegador para fotos corporales.'
+            : 'Backup restaurado! Porém, o limite de espaço de armazenamento local do navegador foi atingido para fotos corporais.'
         );
         setTimeout(() => setAuthError(null), 6000);
       } else {
-        const modeLabel = mode === 'replace' ? 'substituído' : 'mesclado';
-        setSyncToast(`Backup ${modeLabel} e sincronizado com sucesso!`);
+        const modeLabel = mode === 'replace'
+          ? (language === 'en' ? 'replaced' : language === 'es' ? 'reemplazado' : 'substituído')
+          : (language === 'en' ? 'merged' : language === 'es' ? 'combinado' : 'mesclado');
+        setSyncToast(
+          language === 'en'
+            ? `Backup ${modeLabel} and synced successfully!`
+            : language === 'es'
+            ? `¡Copia de seguridad ${modeLabel} y sincronizada con éxito!`
+            : `Backup ${modeLabel} e sincronizado com sucesso!`
+        );
         setTimeout(() => setSyncToast(null), 3500);
       }
     } catch (err) {
       console.error('Import processing error:', err);
-      setAuthError('Erro inesperado ao processar o arquivo de backup.');
+      setAuthError(
+        language === 'en'
+          ? 'Unexpected error processing backup file.'
+          : language === 'es'
+          ? 'Error inesperado al procesar el archivo de copia de seguridad.'
+          : 'Erro inesperado ao processar o arquivo de backup.'
+      );
       setTimeout(() => setAuthError(null), 4000);
     } finally {
       setIsRestoring(false);
@@ -628,7 +674,13 @@ export default function App() {
     const reader = new FileReader();
 
     reader.onerror = () => {
-      setAuthError('Falha de leitura do arquivo selecionado.');
+      setAuthError(
+        language === 'en'
+          ? 'Failed to read selected file.'
+          : language === 'es'
+          ? 'Error al leer el archivo seleccionado.'
+          : 'Falha de leitura do arquivo selecionado.'
+      );
       setTimeout(() => setAuthError(null), 4000);
     };
 
@@ -636,7 +688,13 @@ export default function App() {
       try {
         const text = e.target?.result;
         if (typeof text !== 'string') {
-          setAuthError('Não foi possível ler o conteúdo do arquivo.');
+          setAuthError(
+            language === 'en'
+              ? 'Could not read file content.'
+              : language === 'es'
+              ? 'No se pudo leer el contenido del archivo.'
+              : 'Não foi possível ler o conteúdo do arquivo.'
+          );
           setTimeout(() => setAuthError(null), 4000);
           return;
         }
@@ -666,7 +724,13 @@ export default function App() {
         }
       } catch (err) {
         console.error('Import reading error:', err);
-        setAuthError('Erro inesperado ao processar o arquivo de backup.');
+        setAuthError(
+          language === 'en'
+            ? 'Unexpected error processing backup file.'
+            : language === 'es'
+            ? 'Error inesperado al procesar el archivo de copia de seguridad.'
+            : 'Erro inesperado ao processar o arquivo de backup.'
+        );
         setTimeout(() => setAuthError(null), 4000);
       }
     };
@@ -707,7 +771,7 @@ export default function App() {
                 FitHome
               </span>
               <span className="text-[10px] text-slate-500 hidden sm:inline -mt-0.5">
-                Treinos em Casa & Evolução
+                {language === 'en' ? 'Home Workouts & Body Evolution' : language === 'es' ? 'Entrenamientos en Casa y Evolución' : 'Treinos em Casa & Evolução'}
               </span>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { ROUTINE_TEMPLATES } from '../data/templates';
 import { EXERCISES, MUSCLE_LABELS, HOME_EQUIPMENT_LABELS } from '../data/exercises';
 import { CustomRoutineModal } from './CustomRoutineModal';
 import { useLanguage } from '../i18n/LanguageContext';
+import { getTemplateName, getTemplateDescription, getExerciseName } from '../utils/i18nHelpers';
 import {
   Play,
   Dumbbell,
@@ -69,6 +70,9 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
     setIsModalOpen(false);
     setActiveTab('custom');
   };
+
+  const seriesWord = language === 'en' ? 'sets' : language === 'es' ? 'series' : 'séries';
+  const singleSetWord = language === 'en' ? 'set' : language === 'es' ? 'serie' : 'série';
 
   return (
     <div className="space-y-6">
@@ -145,7 +149,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
           {displayedList.length === 0 ? (
             <div className="p-8 text-center bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 space-y-3">
               <Layers className="w-10 h-10 text-slate-600 mx-auto" />
-              <h4 className="font-semibold text-slate-300 text-sm">{language === 'en' ? 'No custom routines yet' : language === 'es' ? 'Sin rutinas personalizadas aún' : 'Nenhuma rotina personalizada ainda'}</h4>
+              <h4 className="font-semibold text-slate-300 text-sm">{t.routines.emptyCustomTitle}</h4>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
                 {t.routines.emptyCustomDesc}
               </p>
@@ -161,6 +165,9 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
           ) : (
             displayedList.map(tpl => {
               const isSelected = selectedTemplate?.id === tpl.id;
+              const tplName = getTemplateName(tpl, language);
+              const tplDesc = getTemplateDescription(tpl, language);
+
               return (
                 <div
                   key={tpl.id}
@@ -173,10 +180,10 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <h3 className="font-bold text-sm sm:text-base text-slate-100 flex items-center gap-2">
-                      <span>{tpl.name}</span>
+                      <span>{tplName}</span>
                       {tpl.isCustom && (
                         <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          Custom
+                          {t.routines.customBadge}
                         </span>
                       )}
                     </h3>
@@ -188,7 +195,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                             type="button"
                             onClick={e => handleOpenEditModal(tpl, e)}
                             className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded transition-colors"
-                            title="Editar rotina"
+                            title={t.routines.editRoutine}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -196,7 +203,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                             type="button"
                             onClick={e => handleDeleteRoutine(tpl.id, e)}
                             className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
-                            title="Excluir rotina"
+                            title={t.routines.deleteRoutine}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -211,25 +218,25 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                   </div>
 
                   <p className="text-xs text-slate-400 line-clamp-2 mb-3">
-                    {tpl.description}
+                    {tplDesc}
                   </p>
 
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="flex items-center gap-1 text-slate-400">
                       <Clock className="w-3.5 h-3.5 text-slate-500" />
-                      <span>~{tpl.durationMinutes} min</span>
+                      <span>{t.routines.durationEst(tpl.durationMinutes)}</span>
                     </span>
                     <span>·</span>
                     <span className="flex items-center gap-1 text-slate-400">
                       <Layers className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{tpl.exercises.length} exercícios</span>
+                      <span>{t.routines.exercisesCount(tpl.exercises.length)}</span>
                     </span>
                     {tpl.apartmentFriendly && (
                       <>
                         <span>·</span>
                         <span className="text-emerald-400 flex items-center gap-1">
                           <VolumeX className="w-3 h-3" />
-                          <span>Sem barulho</span>
+                          <span>{t.routines.apartmentFriendly}</span>
                         </span>
                       </>
                     )}
@@ -248,16 +255,16 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-slate-100">
-                      {selectedTemplate.name}
+                      {getTemplateName(selectedTemplate, language)}
                     </h3>
                     {selectedTemplate.isCustom && (
                       <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        Personalizada
+                        {t.routines.customBadge}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    {selectedTemplate.description}
+                    {getTemplateDescription(selectedTemplate, language)}
                   </p>
                 </div>
                 <button
@@ -266,7 +273,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                   className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0"
                 >
                   <Play className="w-4 h-4 fill-current" />
-                  <span>Começar Agora</span>
+                  <span>{t.routines.startRoutine}</span>
                 </button>
               </div>
 
@@ -318,7 +325,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                   {selectedTemplate.exercises.map((item, idx) => {
                     const exMeta = EXERCISES.find(e => e.id === item.exerciseId);
                     const isSec = exMeta?.measurementType === 'seconds';
-                    const displayName = language === 'en' ? (exMeta?.name || exMeta?.namePt) : (exMeta?.namePt || exMeta?.name || item.exerciseId);
+                    const displayName = exMeta ? getExerciseName(exMeta, language) : item.exerciseId;
 
                     return (
                       <div
@@ -334,7 +341,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                           </span>
                         </div>
                         <span className="font-bold text-slate-300 tabular-nums">
-                          {item.defaultSets} {item.defaultSets === 1 ? 'série' : 'séries'} × {item.defaultTarget}{isSec ? 's' : ' reps'}
+                          {item.defaultSets} {item.defaultSets === 1 ? singleSetWord : seriesWord} × {item.defaultTarget}{isSec ? 's' : ' reps'}
                         </span>
                       </div>
                     );

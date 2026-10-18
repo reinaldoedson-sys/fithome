@@ -22,6 +22,7 @@ import { MeasurementsFormModal } from './MeasurementsFormModal';
 import { GoalModal } from './GoalModal';
 import { PhotoUploadModal } from './PhotoUploadModal';
 import { PhotoCompareModal } from './PhotoCompareModal';
+import { useLanguage } from '../i18n/LanguageContext';
 import {
   Scale,
   Ruler,
@@ -81,6 +82,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
   onSavePhoto,
   onDeletePhoto
 }) => {
+  const { language, t } = useLanguage();
   // Navigation sub-tabs
   const [activeSubTab, setActiveSubTab] = useState<
     'resumo' | 'graficos' | 'imc' | 'marcos' | 'relatorios' | 'comparacao' | 'historico' | 'fotos'
@@ -510,10 +512,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-display">
-            Evolução Corporal
+            {t.evolution.title}
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Acompanhe peso, medidas corporais, IMC, marcos de conquista e relatórios completos.
+            {t.evolution.subtitle}
           </p>
         </div>
 
@@ -528,7 +530,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Registrar Peso</span>
+            <span>{t.evolution.logWeight}</span>
           </button>
 
           <button
@@ -540,27 +542,27 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap"
           >
             <Ruler className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Registrar Medidas</span>
+            <span>{t.evolution.logMeasurements}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowGoalModal(true)}
             className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-            title="Ajustar Metas e Altura"
+            title={t.evolution.goalsAndHeight}
           >
             <Target className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">Metas & Altura</span>
+            <span className="hidden sm:inline">{t.evolution.goalsAndHeight}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowPhotoUploadModal(true)}
             className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-            title="Adicionar Foto de Evolução"
+            title={t.evolution.photo}
           >
             <Camera className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">Foto</span>
+            <span className="hidden sm:inline">{t.evolution.photo}</span>
           </button>
         </div>
       </div>
@@ -576,7 +578,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Resumo Geral
+          {t.evolution.tabSummary}
         </button>
         <button
           type="button"
@@ -587,7 +589,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Gráficos
+          {t.evolution.tabCharts}
         </button>
         <button
           type="button"
@@ -599,7 +601,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
           }`}
         >
           <Activity className="w-3 h-3" />
-          <span>IMC & Saúde</span>
+          <span>{t.evolution.tabBmi}</span>
         </button>
         <button
           type="button"
@@ -611,7 +613,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
           }`}
         >
           <Award className="w-3 h-3" />
-          <span>Marcos ({milestones.length})</span>
+          <span>{t.evolution.tabMilestones} ({milestones.length})</span>
         </button>
         <button
           type="button"
@@ -623,7 +625,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
           }`}
         >
           <FileText className="w-3 h-3" />
-          <span>Relatórios</span>
+          <span>{t.evolution.tabReports}</span>
         </button>
         <button
           type="button"
@@ -635,7 +637,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
           }`}
         >
           <ArrowLeftRight className="w-3 h-3" />
-          <span>Comparar Datas</span>
+          <span>{t.evolution.tabCompare}</span>
         </button>
         <button
           type="button"
@@ -646,7 +648,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Histórico ({weights.length + measurements.length})
+          {t.evolution.tabTimeline} ({weights.length + measurements.length})
         </button>
         <button
           type="button"
@@ -657,7 +659,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <span>Fotos</span>
+          <span>{t.evolution.tabPhotos}</span>
           {photos.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-950/80 text-emerald-300 font-bold tabular-nums">
               {photos.length}
@@ -673,10 +675,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             <Scale className="w-7 h-7" />
           </div>
           <h3 className="text-lg font-bold text-slate-100 mb-2">
-            Nenhum registro de evolução corporal cadastrado
+            {t.evolution.noData}
           </h3>
           <p className="text-xs sm:text-sm text-slate-400 mb-6 max-w-md mx-auto leading-relaxed">
-            Comece registrando o seu peso de hoje ou suas circunferências corporais (cintura, abdômen, tórax, braços). Seus dados ficam salvos de forma segura e sincronizados.
+            {t.evolution.noDataDesc}
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
@@ -688,7 +690,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
               className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Registrar Meu Primeiro Peso</span>
+              <span>{t.evolution.logWeight}</span>
             </button>
             <button
               type="button"
@@ -699,7 +701,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
               className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm rounded-xl transition-colors inline-flex items-center gap-2"
             >
               <Ruler className="w-4 h-4 text-emerald-400" />
-              <span>Registrar Medidas</span>
+              <span>{t.evolution.logMeasurements}</span>
             </button>
           </div>
         </div>
@@ -713,7 +715,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 {/* 1. Peso Atual */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                    <span>Peso Atual</span>
+                    <span>{t.evolution.currentWeight}</span>
                     <Scale className="w-4 h-4 text-emerald-400" />
                   </div>
                   <div className="my-1">
@@ -722,13 +724,13 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         {currentWeight} <span className="text-sm font-normal text-slate-400">kg</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">Sem pesagem</span>
+                      <span className="text-xs text-slate-500">{language === 'en' ? 'No logs' : language === 'es' ? 'Sin registros' : 'Sem pesagem'}</span>
                     )}
                   </div>
                   <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-1 truncate">
                     <Calendar className="w-3 h-3 text-slate-600 shrink-0" />
                     <span>
-                      {currentWeightEntry ? `Último: ${formatDateBR(currentWeightEntry.date)}` : 'Nenhum'}
+                      {currentWeightEntry ? `${language === 'en' ? 'Last: ' : 'Último: '}${formatDateBR(currentWeightEntry.date)}` : t.common.none}
                     </span>
                   </div>
                 </div>
@@ -736,9 +738,9 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 {/* 2. Peso Inicial */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                    <span>Peso Inicial</span>
+                    <span>{t.evolution.initialWeight}</span>
                     <span className="text-[10px] text-slate-500">
-                      {goal.customInitialWeightKg ? 'Definido' : 'Histórico'}
+                      {goal.customInitialWeightKg ? (language === 'en' ? 'Set' : 'Definido') : (language === 'en' ? 'History' : 'Histórico')}
                     </span>
                   </div>
                   <div className="my-1">
@@ -747,18 +749,18 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         {baselineInitialWeight} <span className="text-sm font-normal text-slate-400">kg</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">Sem registro inicial</span>
+                      <span className="text-xs text-slate-500">{language === 'en' ? 'No baseline record' : language === 'es' ? 'Sin registro inicial' : 'Sem registro inicial'}</span>
                     )}
                   </div>
                   <div className="text-[11px] text-slate-500 truncate mt-1">
-                    {historicalFirstWeightEntry ? `Desde ${formatDateBR(historicalFirstWeightEntry.date)}` : 'Ponto de partida'}
+                    {historicalFirstWeightEntry ? `${language === 'en' ? 'Since ' : 'Desde '}${formatDateBR(historicalFirstWeightEntry.date)}` : (language === 'en' ? 'Baseline' : 'Ponto de partida')}
                   </div>
                 </div>
 
                 {/* 3. Variação Total */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                    <span>Variação Total</span>
+                    <span>{t.evolution.totalChange}</span>
                     {weightDelta !== undefined ? (
                       weightDelta < 0 ? (
                         <TrendingDown className="w-4 h-4 text-emerald-400" />
@@ -775,17 +777,21 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         {weightDelta > 0 ? `+${weightDelta}` : weightDelta} <span className="text-sm font-normal text-slate-400">kg</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">Aguardando dados</span>
+                      <span className="text-xs text-slate-500">{language === 'en' ? 'Awaiting data' : language === 'es' ? 'Esperando datos' : 'Aguardando dados'}</span>
                     )}
                   </div>
                   <div className="text-[11px] text-slate-400 truncate mt-1">
                     {weightDelta !== undefined && weightDeltaPct !== undefined ? (
                       <span>
-                        {weightDelta < 0 ? 'Redução de ' : weightDelta > 0 ? 'Aumento de ' : 'Estável ('}
+                        {weightDelta < 0
+                          ? (language === 'en' ? 'Loss of ' : language === 'es' ? 'Reducción de ' : 'Redução de ')
+                          : weightDelta > 0
+                          ? (language === 'en' ? 'Gain of ' : language === 'es' ? 'Aumento de ' : 'Aumento de ')
+                          : (language === 'en' ? 'Stable (' : 'Estável (')}
                         <strong className="text-slate-200">{Math.abs(weightDeltaPct)}%</strong>
                       </span>
                     ) : (
-                      <span>Variação vs ponto inicial</span>
+                      <span>{language === 'en' ? 'Change vs baseline' : language === 'es' ? 'Variación vs punto inicial' : 'Variação vs ponto inicial'}</span>
                     )}
                   </div>
                 </div>
@@ -793,13 +799,13 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 {/* 4. Meta de Peso */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                    <span>Meta de Peso</span>
+                    <span>{t.evolution.weightGoal}</span>
                     <button
                       type="button"
                       onClick={() => setShowGoalModal(true)}
                       className="text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors"
                     >
-                      Ajustar
+                      {t.common.edit}
                     </button>
                   </div>
                   <div className="my-1">
@@ -813,7 +819,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         onClick={() => setShowGoalModal(true)}
                         className="text-xs text-emerald-400 hover:underline font-semibold"
                       >
-                        + Cadastrar meta
+                        {language === 'en' ? '+ Set target goal' : language === 'es' ? '+ Definir meta' : '+ Cadastrar meta'}
                       </button>
                     )}
                   </div>
@@ -821,15 +827,15 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     {goalRemainingDelta !== undefined ? (
                       isGoalReached ? (
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Meta alcançada!
+                          <CheckCircle2 className="w-3 h-3" /> {language === 'en' ? 'Goal reached!' : language === 'es' ? '¡Meta alcanzada!' : 'Meta alcançada!'}
                         </span>
                       ) : (
                         <span>
-                          Faltam <strong className="text-slate-200">{Math.abs(goalRemainingDelta)} kg</strong>
+                          {language === 'en' ? 'Remaining: ' : language === 'es' ? 'Faltan ' : 'Faltam '}<strong className="text-slate-200">{Math.abs(goalRemainingDelta)} kg</strong>
                         </span>
                       )
                     ) : (
-                      <span>{goal.targetDate ? `Até ${formatDateBR(goal.targetDate)}` : 'Sem prazo'}</span>
+                      <span>{goal.targetDate ? `${language === 'en' ? 'Until ' : language === 'es' ? 'Hasta ' : 'Até '}${formatDateBR(goal.targetDate)}` : (language === 'en' ? 'No deadline' : language === 'es' ? 'Sin plazo' : 'Sem prazo')}</span>
                     )}
                   </div>
                 </div>
@@ -842,7 +848,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     <div className="flex items-center gap-2">
                       <Target className="w-4 h-4 text-emerald-400" />
                       <span className="text-xs font-bold text-slate-200">
-                        Progresso em Direção à Meta ({goalTarget} kg)
+                        {language === 'en' ? `Progress Towards Goal (${goalTarget} kg)` : language === 'es' ? `Progreso Hacia la Meta (${goalTarget} kg)` : `Progresso em Direção à Meta (${goalTarget} kg)`}
                       </span>
                     </div>
                     <span className="text-xs font-bold text-emerald-400 tabular-nums">
@@ -856,9 +862,9 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     />
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500">
-                    <span>Início: {baselineInitialWeight} kg</span>
-                    <span>Atual: {currentWeight} kg</span>
-                    <span>Meta: {goalTarget} kg</span>
+                    <span>{language === 'en' ? 'Initial: ' : language === 'es' ? 'Inicial: ' : 'Início: '}{baselineInitialWeight} kg</span>
+                    <span>{language === 'en' ? 'Current: ' : language === 'es' ? 'Actual: ' : 'Atual: '}{currentWeight} kg</span>
+                    <span>{language === 'en' ? 'Goal: ' : language === 'es' ? 'Meta: ' : 'Meta: '}{goalTarget} kg</span>
                   </div>
                 </div>
               )}
@@ -872,7 +878,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm sm:text-base font-bold text-slate-100">
-                        Índice de Massa Corporal (IMC)
+                        {language === 'en' ? 'Body Mass Index (BMI)' : language === 'es' ? 'Índice de Masa Corporal (IMC)' : 'Índice de Massa Corporal (IMC)'}
                       </h3>
                       {currentBmiInfo && (
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${currentBmiInfo.color}`}>
@@ -882,8 +888,16 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     </div>
                     <p className="text-xs text-slate-400 mt-1">
                       {currentBmiInfo
-                        ? `IMC Atual: ${currentBmiInfo.bmi} kg/m² para estatura de ${userHeightCm} cm.`
-                        : 'Cadastre sua altura para habilitar o cálculo automático do IMC e faixas de peso saudáveis.'}
+                        ? (language === 'en'
+                            ? `Current BMI: ${currentBmiInfo.bmi} kg/m² for height of ${userHeightCm} cm.`
+                            : language === 'es'
+                            ? `IMC Actual: ${currentBmiInfo.bmi} kg/m² para estatura de ${userHeightCm} cm.`
+                            : `IMC Atual: ${currentBmiInfo.bmi} kg/m² para estatura de ${userHeightCm} cm.`)
+                        : (language === 'en'
+                            ? 'Set your height to enable automatic BMI calculations and healthy weight ranges.'
+                            : language === 'es'
+                            ? 'Registra tu altura para habilitar el cálculo de IMC y rangos de peso saludables.'
+                            : 'Cadastre sua altura para habilitar o cálculo automático do IMC e faixas de peso saudáveis.')}
                     </p>
                   </div>
                 </div>
@@ -895,7 +909,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       onClick={() => setActiveSubTab('imc')}
                       className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
                     >
-                      <span>Ver Análise de IMC</span> →
+                      <span>{language === 'en' ? 'View BMI Analysis' : language === 'es' ? 'Ver Análisis de IMC' : 'Ver Análise de IMC'}</span> →
                     </button>
                   ) : (
                     <button
@@ -904,7 +918,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                     >
                       <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Cadastrar Altura</span>
+                      <span>{language === 'en' ? 'Set Height' : language === 'es' ? 'Registrar Altura' : 'Cadastrar Altura'}</span>
                     </button>
                   )}
                 </div>
@@ -916,10 +930,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-sm sm:text-base font-bold text-slate-100">
-                        Tendência Recente de Peso
+                        {language === 'en' ? 'Recent Weight Trend' : language === 'es' ? 'Tendencia Reciente de Peso' : 'Tendência Recente de Peso'}
                       </h3>
                       <p className="text-xs text-slate-400">
-                        {filteredWeightChartData.length} registros cadastrados
+                        {filteredWeightChartData.length} {language === 'en' ? 'records logged' : language === 'es' ? 'registros guardados' : 'registros cadastrados'}
                       </p>
                     </div>
                     <button
@@ -927,7 +941,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       onClick={() => setActiveSubTab('graficos')}
                       className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
                     >
-                      Abrir Gráficos Detalhados →
+                      {language === 'en' ? 'Detailed Charts →' : language === 'es' ? 'Gráficos Detallados →' : 'Abrir Gráficos Detalhados →'}
                     </button>
                   </div>
 
@@ -989,10 +1003,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-base font-bold text-slate-100">
-                        Variação de Medidas Corporais (Início vs Atual)
+                        {language === 'en' ? 'Body Measurements Variation (Baseline vs Current)' : language === 'es' ? 'Variación de Medidas Corporales (Inicial vs Actual)' : 'Variação de Medidas Corporais (Início vs Atual)'}
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Diferença em centímetros comparando o primeiro e o mais recente registro de cada região corporal.
+                        {language === 'en' ? 'Difference in centimeters comparing the first and most recent measurement of each region.' : language === 'es' ? 'Diferencia en centímetros entre la primera y la última medición de cada región.' : 'Diferença em centímetros comparando o primeiro e o mais recente registro de cada região corporal.'}
                       </p>
                     </div>
                   </div>
@@ -1007,7 +1021,9 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-bold text-xs text-slate-200">
-                              {m.name}
+                              {MEASUREMENT_LABELS[m.key as MeasurementKey]
+                                ? (language === 'en' ? MEASUREMENT_LABELS[m.key as MeasurementKey].en : language === 'es' ? MEASUREMENT_LABELS[m.key as MeasurementKey].es : MEASUREMENT_LABELS[m.key as MeasurementKey].name)
+                                : m.name}
                             </span>
                             {diff !== undefined && (
                               <span
@@ -1026,13 +1042,13 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
                           <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60">
                             <div>
-                              <span className="text-[10px] text-slate-500 block">Inicial:</span>
+                              <span className="text-[10px] text-slate-500 block">{language === 'en' ? 'Initial:' : language === 'es' ? 'Inicial:' : 'Inicial:'}</span>
                               <span className="font-semibold text-slate-300 tabular-nums">
                                 {m.initialVal} cm
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-[10px] text-slate-500 block">Atual:</span>
+                              <span className="text-[10px] text-slate-500 block">{language === 'en' ? 'Current:' : language === 'es' ? 'Actual:' : 'Atual:'}</span>
                               <span className="font-bold text-slate-100 tabular-nums">
                                 {m.currentVal} cm
                               </span>
@@ -1056,21 +1072,21 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   <div>
                     <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                       <Scale className="w-5 h-5 text-emerald-400" />
-                      <span>Gráfico 1: Evolução do Peso Corporal</span>
+                      <span>{language === 'en' ? 'Chart 1: Body Weight Evolution' : language === 'es' ? 'Gráfico 1: Evolución del Peso Corporal' : 'Gráfico 1: Evolução do Peso Corporal'}</span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Histórico completo de pesagem com filtros de período e escala dinâmica.
+                      {language === 'en' ? 'Complete weighing history with period filters and dynamic scale.' : language === 'es' ? 'Historial completo de pesajes con filtros y escala dinámica.' : 'Histórico completo de pesagem com filtros de período e escala dinâmica.'}
                     </p>
                   </div>
 
                   {/* Period filter buttons */}
                   <div className="flex items-center gap-1 p-1 bg-slate-950/80 border border-slate-800 rounded-xl self-start sm:self-auto overflow-x-auto">
                     {[
-                      { key: '30d' as const, label: '30 dias' },
-                      { key: '3m' as const, label: '3 meses' },
-                      { key: '6m' as const, label: '6 meses' },
-                      { key: '1y' as const, label: '1 ano' },
-                      { key: 'all' as const, label: 'Tudo' }
+                      { key: '30d' as const, label: language === 'en' ? '30 days' : language === 'es' ? '30 días' : '30 dias' },
+                      { key: '3m' as const, label: language === 'en' ? '3 months' : language === 'es' ? '3 meses' : '3 meses' },
+                      { key: '6m' as const, label: language === 'en' ? '6 months' : language === 'es' ? '6 meses' : '6 meses' },
+                      { key: '1y' as const, label: language === 'en' ? '1 year' : language === 'es' ? '1 año' : '1 ano' },
+                      { key: 'all' as const, label: language === 'en' ? 'All' : language === 'es' ? 'Todo' : 'Tudo' }
                     ].map(p => (
                       <button
                         key={p.key}
@@ -1090,7 +1106,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
                 {filteredWeightChartData.length === 0 ? (
                   <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                    Nenhum registro de peso no período selecionado.
+                    {language === 'en' ? 'No weight records found in selected period.' : language === 'es' ? 'Sin registros de peso en el período seleccionado.' : 'Nenhum registro de peso no período selecionado.'}
                   </div>
                 ) : (
                   <div className="w-full h-72 sm:h-80 select-none">
@@ -1156,15 +1172,15 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   <div>
                     <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                       <Ruler className="w-5 h-5 text-emerald-400" />
-                      <span>Gráfico 2: Evolução das Medidas Corporais</span>
+                      <span>{language === 'en' ? 'Chart 2: Body Measurements Evolution' : language === 'es' ? 'Gráfico 2: Evolución de Medidas Corporales' : 'Gráfico 2: Evolução das Medidas Corporais'}</span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Selecione uma região específica para visualizar a progressão em centímetros (cm).
+                      {language === 'en' ? 'Select a specific region to track progression in centimeters (cm).' : language === 'es' ? 'Selecciona una región para ver la progresión en centímetros (cm).' : 'Selecione uma região específica para visualizar a progressão em centímetros (cm).'}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400 font-medium">Região:</label>
+                    <label className="text-xs text-slate-400 font-medium">{language === 'en' ? 'Region:' : language === 'es' ? 'Región:' : 'Região:'}</label>
                     <select
                       value={selectedMeasurementKey}
                       onChange={e => setSelectedMeasurementKey(e.target.value as MeasurementKey)}
@@ -1175,7 +1191,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         : (Object.keys(MEASUREMENT_LABELS) as MeasurementKey[])
                       ).map(k => (
                         <option key={k} value={k}>
-                          {MEASUREMENT_LABELS[k].name}
+                          {language === 'en' ? MEASUREMENT_LABELS[k].en : language === 'es' ? MEASUREMENT_LABELS[k].es : MEASUREMENT_LABELS[k].name}
                         </option>
                       ))}
                     </select>
@@ -1184,7 +1200,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
                 {measurementChartData.length === 0 ? (
                   <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                    Nenhum registro encontrado para {MEASUREMENT_LABELS[selectedMeasurementKey].name}.
+                    {language === 'en' ? 'No records found for this measurement.' : language === 'es' ? 'Sin registros encontrados para esta medida.' : `Nenhum registro encontrado para ${MEASUREMENT_LABELS[selectedMeasurementKey].name}.`}
                   </div>
                 ) : (
                   <div className="w-full h-72 sm:h-80 select-none">
@@ -1215,7 +1231,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                 <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs">
                                   <div className="font-bold text-slate-200 mb-1">{d.fullDate}</div>
                                   <div className="text-slate-400 text-[11px] mb-0.5">
-                                    {MEASUREMENT_LABELS[selectedMeasurementKey].name}:
+                                    {language === 'en' ? MEASUREMENT_LABELS[selectedMeasurementKey].en : language === 'es' ? MEASUREMENT_LABELS[selectedMeasurementKey].es : MEASUREMENT_LABELS[selectedMeasurementKey].name}:
                                   </div>
                                   <div className="text-lg font-extrabold text-sky-400 font-display tabular-nums">
                                     {d.valueCm} cm
@@ -1256,10 +1272,14 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     <Activity className="w-6 h-6" />
                   </div>
                   <h3 className="text-base sm:text-lg font-bold text-slate-100 mb-2">
-                    Altura Não Cadastrada
+                    {language === 'en' ? 'Height Not Logged' : language === 'es' ? 'Altura No Registrada' : 'Altura Não Cadastrada'}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-400 mb-6 leading-relaxed">
-                    Para calcular o Índice de Massa Corporal (IMC) e exibir as faixas de peso saudáveis da OMS, informe sua estatura nas configurações de meta.
+                    {language === 'en'
+                      ? 'To calculate Body Mass Index (BMI) and view healthy WHO ranges, enter your height in goal settings.'
+                      : language === 'es'
+                      ? 'Para calcular el IMC y ver rangos saludables de la OMS, introduce tu altura en metas.'
+                      : 'Para calcular o Índice de Massa Corporal (IMC) e exibir as faixas de peso saudáveis da OMS, informe sua estatura nas configurações de meta.'}
                   </p>
                   <button
                     type="button"
@@ -1267,7 +1287,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all inline-flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
-                    <span>Cadastrar Minha Altura</span>
+                    <span>{language === 'en' ? 'Set My Height' : language === 'es' ? 'Registrar Mi Altura' : 'Cadastrar Minha Altura'}</span>
                   </button>
                 </div>
               ) : (
@@ -1278,8 +1298,8 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                          <span className="font-semibold uppercase tracking-wider">IMC Atual</span>
-                          <span className="text-slate-500">Altura: {userHeightCm} cm</span>
+                          <span className="font-semibold uppercase tracking-wider">{language === 'en' ? 'Current BMI' : language === 'es' ? 'IMC Actual' : 'IMC Atual'}</span>
+                          <span className="text-slate-500">{language === 'en' ? 'Height: ' : language === 'es' ? 'Altura: ' : 'Altura: '}{userHeightCm} cm</span>
                         </div>
                         <div className="flex items-baseline gap-2 mb-2">
                           <span className="text-4xl sm:text-5xl font-black text-slate-100 font-display tabular-nums">
@@ -1300,7 +1320,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       {/* Healthy weight range info */}
                       {currentBmiInfo && (
                         <div className="pt-3 border-t border-slate-800/80 text-xs">
-                          <span className="text-slate-400 block mb-1">Faixa de peso saudável para sua altura:</span>
+                          <span className="text-slate-400 block mb-1">{language === 'en' ? 'Healthy weight range for your height:' : language === 'es' ? 'Rango de peso saludable para tu altura:' : 'Faixa de peso saudável para sua altura:'}</span>
                           <span className="font-bold text-emerald-400 tabular-nums">
                             {currentBmiInfo.healthyWeightRange.minKg} kg — {currentBmiInfo.healthyWeightRange.maxKg} kg
                           </span>
@@ -1312,25 +1332,25 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     <div className="lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-bold text-slate-200">
-                          Tabela de Classificação da OMS (Adultos)
+                          {language === 'en' ? 'WHO Classification Table (Adults)' : language === 'es' ? 'Tabla de Clasificación OMS (Adultos)' : 'Tabela de Classificação da OMS (Adultos)'}
                         </h4>
                         <button
                           type="button"
                           onClick={() => setShowGoalModal(true)}
                           className="text-xs text-emerald-400 hover:underline"
                         >
-                          Alterar Altura
+                          {language === 'en' ? 'Edit Height' : language === 'es' ? 'Cambiar Altura' : 'Alterar Altura'}
                         </button>
                       </div>
 
                       <div className="space-y-2 text-xs">
                         {[
-                          { range: '< 18.5', label: 'Abaixo do peso', classKey: 'abaixo_peso', color: 'text-amber-400' },
-                          { range: '18.5 – 24.9', label: 'Eutrofia / Normal', classKey: 'normal', color: 'text-emerald-400' },
-                          { range: '25.0 – 29.9', label: 'Sobrepeso', classKey: 'sobrepeso', color: 'text-yellow-400' },
-                          { range: '30.0 – 34.9', label: 'Obesidade Grau I', classKey: 'obesidade_1', color: 'text-orange-400' },
-                          { range: '35.0 – 39.9', label: 'Obesidade Grau II', classKey: 'obesidade_2', color: 'text-rose-400' },
-                          { range: '≥ 40.0', label: 'Obesidade Grau III', classKey: 'obesidade_3', color: 'text-red-400' }
+                          { range: '< 18.5', label: language === 'en' ? 'Underweight' : language === 'es' ? 'Bajo peso' : 'Abaixo do peso', classKey: 'abaixo_peso', color: 'text-amber-400' },
+                          { range: '18.5 – 24.9', label: language === 'en' ? 'Normal / Healthy' : language === 'es' ? 'Normal / Saludable' : 'Eutrofia / Normal', classKey: 'normal', color: 'text-emerald-400' },
+                          { range: '25.0 – 29.9', label: language === 'en' ? 'Overweight' : language === 'es' ? 'Sobrepeso' : 'Sobrepeso', classKey: 'sobrepeso', color: 'text-yellow-400' },
+                          { range: '30.0 – 34.9', label: language === 'en' ? 'Obesity Class I' : language === 'es' ? 'Obesidad Grado I' : 'Obesidade Grau I', classKey: 'obesidade_1', color: 'text-orange-400' },
+                          { range: '35.0 – 39.9', label: language === 'en' ? 'Obesity Class II' : language === 'es' ? 'Obesidad Grado II' : 'Obesidade Grau II', classKey: 'obesidade_2', color: 'text-rose-400' },
+                          { range: '≥ 40.0', label: language === 'en' ? 'Obesity Class III' : language === 'es' ? 'Obesidad Grado III' : 'Obesidade Grau III', classKey: 'obesidade_3', color: 'text-red-400' }
                         ].map(c => {
                           const isCurrent = currentBmiInfo?.classification === c.classKey;
                           return (
@@ -1349,7 +1369,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                 </span>
                                 {isCurrent && (
                                   <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
-                                    Seu IMC
+                                    {language === 'en' ? 'Your BMI' : language === 'es' ? 'Tu IMC' : 'Seu IMC'}
                                   </span>
                                 )}
                               </div>
@@ -1363,7 +1383,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       <div className="mt-4 p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-start gap-2">
                         <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                         <span>
-                          <strong>Nota clínica:</strong> O IMC é um indicador populacional de triagem clínica para adultos e não deve ser tratado como diagnóstico isolado. Ele não mede diretamente a porcentagem de gordura corporal nem diferencia massa muscular hipertrofiada de adiposidade.
+                          <strong>{language === 'en' ? 'Clinical Note:' : language === 'es' ? 'Nota clínica:' : 'Nota clínica:'}</strong> {language === 'en' ? 'BMI is a general screening indicator for adults and not an isolated diagnosis. It does not directly distinguish muscle mass from adiposity.' : language === 'es' ? 'El IMC es un indicador general para adultos y no debe ser un diagnóstico aislado. No mide el % de grasa ni diferencia músculo de adiposidad.' : 'O IMC é um indicador populacional de triagem clínica para adultos e não deve ser tratado como diagnóstico isolado. Ele não mede diretamente a porcentagem de gordura corporal nem diferencia massa muscular hipertrofiada de adiposidade.'}
                         </span>
                       </div>
                     </div>
@@ -1374,16 +1394,16 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     <div className="mb-4">
                       <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-emerald-400" />
-                        <span>Evolução Histórica do IMC</span>
+                        <span>{language === 'en' ? 'Historical BMI Evolution' : language === 'es' ? 'Evolución Histórica del IMC' : 'Evolução Histórica do IMC'}</span>
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Acompanhe a curva do seu índice de massa corporal a cada pesagem ao longo do tempo.
+                        {language === 'en' ? 'Track your Body Mass Index curve over time across all weigh-ins.' : language === 'es' ? 'Sigue la curva de tu índice de masa corporal con el tiempo.' : 'Acompanhe a curva do seu índice de massa corporal a cada pesagem ao longo do tempo.'}
                       </p>
                     </div>
 
                     {historicalBmiChartData.length === 0 ? (
                       <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                        Nenhuma pesagem cadastrada para traçar a curva de IMC.
+                        {language === 'en' ? 'No weigh-ins logged to trace the BMI curve.' : language === 'es' ? 'Sin pesajes registrados para trazar la curva de IMC.' : 'Nenhuma pesagem cadastrada para traçar a curva de IMC.'}
                       </div>
                     ) : (
                       <div className="w-full h-72 sm:h-80 select-none">
@@ -1393,8 +1413,8 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                             margin={{ top: 10, right: 15, left: -10, bottom: 0 }}
                           >
                             <CartesianGrid stroke="#334155" strokeDasharray="4 4" opacity={0.3} vertical={false} />
-                            <ReferenceLine y={24.9} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Limite Normal (24.9)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
-                            <ReferenceLine y={18.5} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: 'Limite Baixo Peso (18.5)', fill: '#f59e0b', fontSize: 10, position: 'insideBottomRight' }} />
+                            <ReferenceLine y={24.9} stroke="#10b981" strokeDasharray="3 3" label={{ value: language === 'en' ? 'Normal Limit (24.9)' : language === 'es' ? 'Límite Normal (24.9)' : 'Limite Normal (24.9)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
+                            <ReferenceLine y={18.5} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: language === 'en' ? 'Underweight Limit (18.5)' : language === 'es' ? 'Límite Bajo Peso (18.5)' : 'Limite Baixo Peso (18.5)', fill: '#f59e0b', fontSize: 10, position: 'insideBottomRight' }} />
                             <XAxis
                               dataKey="dateFormatted"
                               stroke="#64748b"
@@ -1415,7 +1435,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                   return (
                                     <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs">
                                       <div className="font-bold text-slate-200 mb-1">
-                                        {d.fullDate} {d.indexInDay ? `(${d.indexInDay}ª pesagem)` : ''}
+                                        {d.fullDate} {d.indexInDay ? `(${d.indexInDay}ª)` : ''}
                                       </div>
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="text-lg font-black text-emerald-400 font-display tabular-nums">
@@ -1424,7 +1444,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                         <span className="text-[10px] text-slate-400">({d.bmiLabel})</span>
                                       </div>
                                       <div className="text-slate-300 text-[11px]">
-                                        Peso registrado: <strong>{d.weightKg} kg</strong>
+                                        {language === 'en' ? 'Weight logged: ' : language === 'es' ? 'Peso registrado: ' : 'Peso registrado: '}<strong>{d.weightKg} kg</strong>
                                       </div>
                                     </div>
                                   );
@@ -1458,21 +1478,21 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   <div>
                     <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                       <Award className="w-5 h-5 text-emerald-400" />
-                      <span>Linha do Tempo de Conquistas e Marcos</span>
+                      <span>{language === 'en' ? 'Milestones & Achievements Timeline' : language === 'es' ? 'Línea de Tiempo de Logros y Metas' : 'Linha do Tempo de Conquistas e Marcos'}</span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Marcos calculados deterministicamente a partir do seu histórico de pesagens e medições.
+                      {language === 'en' ? 'Milestones calculated deterministically from your logged weight and measurements history.' : language === 'es' ? 'Hitos calculados automáticamente a partir de tu historial.' : 'Marcos calculados deterministicamente a partir do seu histórico de pesagens e medições.'}
                     </p>
                   </div>
                 </div>
 
                 {milestones.length === 0 ? (
                   <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                    Ainda não há marcos suficientes registrados. Continue consistente nos treinos e registros!
+                    {language === 'en' ? 'Not enough milestones logged yet. Keep training and tracking consistently!' : language === 'es' ? 'Aún no hay suficientes hitos registrados. ¡Sigue entrenando con constancia!' : 'Ainda não há marcos suficientes registrados. Continue consistente nos treinos e registros!'}
                   </div>
                 ) : (
                   <div className="relative pl-6 sm:pl-8 border-l border-emerald-500/30 space-y-6 ml-2 sm:ml-4 my-4">
-                    {milestones.map((ms, idx) => (
+                    {milestones.map((ms) => (
                       <div key={ms.id} className="relative group">
                         {/* Milestone dot */}
                         <div className="absolute -left-[31px] sm:-left-[39px] top-1 w-6 h-6 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-300 shadow-md">
@@ -1517,10 +1537,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                   <div>
                     <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                       <FileText className="w-5 h-5 text-emerald-400" />
-                      <span>Gerador de Relatórios de Evolução</span>
+                      <span>{language === 'en' ? 'Evolution Report Generator' : language === 'es' ? 'Generador de Informes de Evolución' : 'Gerador de Relatórios de Evolução'}</span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Selecione um intervalo de datas para gerar um sumário executivo, imprimir em PDF ou exportar CSV.
+                      {language === 'en' ? 'Select a date range to generate a summary, print to PDF, or export CSV.' : language === 'es' ? 'Selecciona un rango de fechas para generar un resumen, imprimir en PDF o exportar CSV.' : 'Selecione um intervalo de datas para gerar um sumário executivo, imprimir em PDF ou exportar CSV.'}
                     </p>
                   </div>
 
@@ -1529,32 +1549,32 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       type="button"
                       onClick={() => exportReportToCsv(generatedReport)}
                       className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5"
-                      title="Exportar para planilha CSV (compatível com Excel)"
+                      title={language === 'en' ? 'Export CSV' : language === 'es' ? 'Exportar CSV' : 'Exportar para planilha CSV'}
                     >
                       <Download className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Exportar CSV</span>
+                      <span>{language === 'en' ? 'Export CSV' : language === 'es' ? 'Exportar CSV' : 'Exportar CSV'}</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => window.print()}
                       className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
-                      title="Imprimir ou Salvar em PDF pelo navegador"
+                      title={language === 'en' ? 'Print or Save PDF' : language === 'es' ? 'Imprimir / Guardar PDF' : 'Imprimir ou Salvar em PDF'}
                     >
                       <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Imprimir / Salvar PDF</span>
+                      <span>{language === 'en' ? 'Print / PDF' : language === 'es' ? 'Imprimir / PDF' : 'Imprimir / Salvar PDF'}</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Preset shortcuts */}
                 <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-800">
-                  <span className="text-xs text-slate-400 font-medium">Períodos pré-definidos:</span>
+                  <span className="text-xs text-slate-400 font-medium">{language === 'en' ? 'Presets:' : language === 'es' ? 'Períodos predefinidos:' : 'Períodos pré-definidos:'}</span>
                   {[
-                    { key: '30d' as const, label: 'Últimos 30 dias' },
-                    { key: '90d' as const, label: 'Últimos 90 dias' },
-                    { key: 'year' as const, label: 'Ano Atual' },
-                    { key: 'all' as const, label: 'Histórico Completo' }
+                    { key: '30d' as const, label: language === 'en' ? 'Last 30 days' : language === 'es' ? 'Últimos 30 días' : 'Últimos 30 dias' },
+                    { key: '90d' as const, label: language === 'en' ? 'Last 90 days' : language === 'es' ? 'Últimos 90 días' : 'Últimos 90 dias' },
+                    { key: 'year' as const, label: language === 'en' ? 'Current Year' : language === 'es' ? 'Año Actual' : 'Ano Atual' },
+                    { key: 'all' as const, label: language === 'en' ? 'All History' : language === 'es' ? 'Todo el Historial' : 'Histórico Completo' }
                   ].map(p => (
                     <button
                       key={p.key}
@@ -1588,8 +1608,8 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 print:bg-white print:text-black print:border-none print:p-0">
                 {!generatedReport.isValidDateRange ? (
                   <div className="p-6 text-center text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                    <p className="font-bold text-sm mb-1">Intervalo de Datas Inválido</p>
-                    <p className="text-xs text-slate-400">{generatedReport.dateRangeError || 'A data inicial não pode ser posterior à data final.'}</p>
+                    <p className="font-bold text-sm mb-1">{language === 'en' ? 'Invalid Date Range' : language === 'es' ? 'Rango de Fechas Inválido' : 'Intervalo de Datas Inválido'}</p>
+                    <p className="text-xs text-slate-400">{generatedReport.dateRangeError || (language === 'en' ? 'Start date cannot be after end date.' : language === 'es' ? 'La fecha inicial no puede ser posterior a la fecha final.' : 'A data inicial não pode ser posterior à data final.')}</p>
                   </div>
                 ) : (
                   <>
@@ -1597,36 +1617,36 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     <div className="flex items-start justify-between border-b border-slate-800 pb-4">
                       <div>
                         <h3 className="text-lg sm:text-xl font-bold text-slate-100 font-display">
-                          Relatório de Evolução Corporal
+                          {language === 'en' ? 'Body Evolution Report' : language === 'es' ? 'Informe de Evolución Corporal' : 'Relatório de Evolução Corporal'}
                         </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          Período avaliado: <strong>{formatDateBR(generatedReport.startDate)}</strong> até <strong>{formatDateBR(generatedReport.endDate)}</strong>
+                          {language === 'en' ? 'Period: ' : language === 'es' ? 'Período: ' : 'Período avaliado: '}<strong>{formatDateBR(generatedReport.startDate)}</strong> {language === 'en' ? 'to' : language === 'es' ? 'hasta' : 'até'} <strong>{formatDateBR(generatedReport.endDate)}</strong>
                         </p>
                       </div>
                       <div className="text-right text-xs text-slate-500">
-                        <div>FitHome · Treinos em Casa</div>
-                        <div>{generatedReport.totalWeights} pesagens · {generatedReport.totalMeasurements} sessões de medidas</div>
+                        <div>FitHome</div>
+                        <div>{generatedReport.totalWeights} {language === 'en' ? 'weigh-ins' : language === 'es' ? 'pesajes' : 'pesagens'} · {generatedReport.totalMeasurements} {language === 'en' ? 'measurements' : language === 'es' ? 'medidas' : 'sessões de medidas'}</div>
                       </div>
                     </div>
 
                     {/* Weight & BMI Indicators */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                        <span className="text-[11px] text-slate-500 block mb-1">Peso no Início</span>
+                        <span className="text-[11px] text-slate-500 block mb-1">{language === 'en' ? 'Starting Weight' : language === 'es' ? 'Peso Inicial' : 'Peso no Início'}</span>
                         <span className="text-xl font-bold text-slate-200 tabular-nums">
-                          {generatedReport.initialWeight !== undefined ? `${generatedReport.initialWeight} kg` : 'Sem registro'}
+                          {generatedReport.initialWeight !== undefined ? `${generatedReport.initialWeight} kg` : (language === 'en' ? 'No record' : language === 'es' ? 'Sin registro' : 'Sem registro')}
                         </span>
                       </div>
 
                       <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                        <span className="text-[11px] text-slate-500 block mb-1">Peso no Final</span>
+                        <span className="text-[11px] text-slate-500 block mb-1">{language === 'en' ? 'Final Weight' : language === 'es' ? 'Peso Final' : 'Peso no Final'}</span>
                         <span className="text-xl font-bold text-slate-100 tabular-nums">
-                          {generatedReport.finalWeight !== undefined ? `${generatedReport.finalWeight} kg` : 'Sem registro'}
+                          {generatedReport.finalWeight !== undefined ? `${generatedReport.finalWeight} kg` : (language === 'en' ? 'No record' : language === 'es' ? 'Sin registro' : 'Sem registro')}
                         </span>
                       </div>
 
                       <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                        <span className="text-[11px] text-slate-500 block mb-1">Variação no Período</span>
+                        <span className="text-[11px] text-slate-500 block mb-1">{language === 'en' ? 'Period Change' : language === 'es' ? 'Variación en Período' : 'Variação no Período'}</span>
                         {generatedReport.hasWeightComparison && generatedReport.weightDelta !== undefined ? (
                           <>
                             <span className="text-xl font-bold text-slate-100 tabular-nums">
@@ -1639,29 +1659,29 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                               )}
                             </span>
                             <span className="text-[11px] text-slate-400 block mt-0.5">
-                              {generatedReport.weightDelta === 0 ? '(Estável)' : `(${generatedReport.weightDeltaPct}%)`}
+                              {generatedReport.weightDelta === 0 ? `(${language === 'en' ? 'Stable' : 'Estável'})` : `(${generatedReport.weightDeltaPct}%)`}
                             </span>
                           </>
                         ) : (
                           <>
                             <span className="text-xs font-semibold text-slate-400 block mt-1">
-                              {generatedReport.totalWeights === 1 ? 'Apenas 1 pesagem' : 'Sem registros'}
+                              {generatedReport.totalWeights === 1 ? (language === 'en' ? 'Only 1 log' : language === 'es' ? 'Solo 1 pesaje' : 'Apenas 1 pesagem') : (language === 'en' ? 'No records' : language === 'es' ? 'Sin registros' : 'Sem registros')}
                             </span>
                             <span className="text-[10px] text-slate-500 block mt-0.5">
-                              {generatedReport.totalWeights === 1 ? 'Comparação indisponível' : '—'}
+                              {generatedReport.totalWeights === 1 ? (language === 'en' ? 'Comparison unavailable' : language === 'es' ? 'Comparación no disponible' : 'Comparação indisponível') : '—'}
                             </span>
                           </>
                         )}
                       </div>
 
                       <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-                        <span className="text-[11px] text-slate-500 block mb-1">IMC (Início → Final)</span>
+                        <span className="text-[11px] text-slate-500 block mb-1">IMC ({language === 'en' ? 'Start → End' : language === 'es' ? 'Inicio → Final' : 'Início → Final'})</span>
                         <span className="text-base font-bold text-slate-200 tabular-nums">
                           {generatedReport.initialBmi && generatedReport.finalBmi
                             ? `${generatedReport.initialBmi} → ${generatedReport.finalBmi}`
                             : generatedReport.finalBmi
                             ? `${generatedReport.finalBmi}`
-                            : 'Não calculado'}
+                            : (language === 'en' ? 'Not calculated' : language === 'es' ? 'No calculado' : 'Não calculado')}
                         </span>
                         {generatedReport.finalBmiLabel && (
                           <span className="text-[10px] text-emerald-400 block mt-0.5 truncate">
@@ -1674,28 +1694,32 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     {/* Measurements Evolution Table */}
                     <div>
                       <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-                        Evolução das Medidas Corporais no Período
+                        {language === 'en' ? 'Body Measurements Evolution in Period' : language === 'es' ? 'Evolución de Medidas Corporales en el Período' : 'Evolução das Medidas Corporais no Período'}
                       </h4>
 
                       {generatedReport.measurementsComparison.length === 0 ? (
                         <div className="text-center py-6 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-slate-800">
-                          Nenhuma medida registrada no período selecionado.
+                          {language === 'en' ? 'No measurements logged in selected period.' : language === 'es' ? 'Sin medidas registradas en el período seleccionado.' : 'Nenhuma medida registrada no período selecionado.'}
                         </div>
                       ) : (
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs text-left">
                             <thead>
                               <tr className="border-b border-slate-800 text-slate-400">
-                                <th className="py-2 px-3 font-semibold">Região</th>
-                                <th className="py-2 px-3 font-semibold">Medida Inicial</th>
-                                <th className="py-2 px-3 font-semibold">Medida Final</th>
-                                <th className="py-2 px-3 font-semibold">Diferença</th>
+                                <th className="py-2 px-3 font-semibold">{language === 'en' ? 'Region' : language === 'es' ? 'Región' : 'Região'}</th>
+                                <th className="py-2 px-3 font-semibold">{language === 'en' ? 'Initial' : language === 'es' ? 'Inicial' : 'Medida Inicial'}</th>
+                                <th className="py-2 px-3 font-semibold">{language === 'en' ? 'Final' : language === 'es' ? 'Final' : 'Medida Final'}</th>
+                                <th className="py-2 px-3 font-semibold">{language === 'en' ? 'Difference' : language === 'es' ? 'Diferencia' : 'Diferença'}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/60">
                               {generatedReport.measurementsComparison.map(m => (
                                 <tr key={m.key} className="hover:bg-slate-950/30">
-                                  <td className="py-2.5 px-3 font-bold text-slate-200">{m.name}</td>
+                                  <td className="py-2.5 px-3 font-bold text-slate-200">
+                                    {MEASUREMENT_LABELS[m.key as MeasurementKey]
+                                      ? (language === 'en' ? MEASUREMENT_LABELS[m.key as MeasurementKey].en : language === 'es' ? MEASUREMENT_LABELS[m.key as MeasurementKey].es : MEASUREMENT_LABELS[m.key as MeasurementKey].name)
+                                      : m.name}
+                                  </td>
                                   <td className="py-2.5 px-3 font-mono text-slate-300">
                                     {m.initialVal !== undefined ? `${m.initialVal} cm` : '—'}
                                   </td>
@@ -1705,11 +1729,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                   <td className="py-2.5 px-3 font-mono font-bold">
                                     {m.hasComparison && m.diff !== undefined ? (
                                       <span className={m.diff < 0 ? 'text-emerald-400' : m.diff > 0 ? 'text-sky-400' : 'text-slate-400'}>
-                                        {m.diff === 0 ? '0,0 cm (Estável)' : `${m.diff > 0 ? `+${m.diff}` : m.diff} cm`}
+                                        {m.diff === 0 ? `0,0 cm (${language === 'en' ? 'Stable' : 'Estável'})` : `${m.diff > 0 ? `+${m.diff}` : m.diff} cm`}
                                       </span>
                                     ) : (
                                       <span className="text-slate-500 text-[11px] font-normal">
-                                        Indisponível (1 medição)
+                                        {language === 'en' ? 'Unavailable (1 log)' : language === 'es' ? 'No disponible (1 medición)' : 'Indisponível (1 medição)'}
                                       </span>
                                     )}
                                   </td>
@@ -1726,12 +1750,12 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 {/* Milestones Achieved In Period */}
                 <div>
                   <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-                    Marcos Conquistados no Período ({generatedReport.milestonesInPeriod.length})
+                    {language === 'en' ? `Milestones Achieved in Period (${generatedReport.milestonesInPeriod.length})` : language === 'es' ? `Hitos Alcanzados en el Período (${generatedReport.milestonesInPeriod.length})` : `Marcos Conquistados no Período (${generatedReport.milestonesInPeriod.length})`}
                   </h4>
 
                   {generatedReport.milestonesInPeriod.length === 0 ? (
                     <p className="text-xs text-slate-500 italic">
-                      Nenhum marco alcançado durante o intervalo de datas selecionado.
+                      {language === 'en' ? 'No milestones achieved during the selected date range.' : language === 'es' ? 'Sin hitos alcanzados en este rango de fechas.' : 'Nenhum marco alcançado durante o intervalo de datas selecionado.'}
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1760,23 +1784,23 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 <div className="mb-6">
                   <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
                     <ArrowLeftRight className="w-5 h-5 text-emerald-400" />
-                    <span>Comparação Entre Duas Datas Específicas</span>
+                    <span>{language === 'en' ? 'Comparison Between Two Specific Dates' : language === 'es' ? 'Comparación Entre Dos Fechas Específicas' : 'Comparação Entre Duas Datas Específicas'}</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    Selecione duas datas para comparar peso e medidas corporais lado a lado com diferenças exatas.
+                    {language === 'en' ? 'Select two dates to compare weight and body measurements side-by-side with exact deltas.' : language === 'es' ? 'Selecciona dos fechas para comparar peso y medidas lado a lado.' : 'Selecione duas datas para comparar peso e medidas corporais lado a lado com diferenças exatas.'}
                   </p>
                 </div>
 
                 {allRecordedDates.length < 2 ? (
                   <div className="text-center py-12 text-slate-500 text-xs bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                    É necessário ter registros em pelo menos duas datas diferentes para realizar comparações.
+                    {language === 'en' ? 'Records across at least two distinct dates are needed to perform comparisons.' : language === 'es' ? 'Se necesitan registros de al menos dos fechas para comparar.' : 'É necessário ter registros em pelo menos duas datas diferentes para realizar comparações.'}
                   </div>
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                       <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
                         <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                          Data 1 (Ponto de Partida / Referência)
+                          {language === 'en' ? 'Date 1 (Baseline / Reference Point)' : language === 'es' ? 'Fecha 1 (Punto de Referencia)' : 'Data 1 (Ponto de Partida / Referência)'}
                         </label>
                         <select
                           value={compareDateA}
@@ -1793,7 +1817,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
                       <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
                         <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                          Data 2 (Ponto Atual / Comparação)
+                          {language === 'en' ? 'Date 2 (Comparison Point)' : language === 'es' ? 'Fecha 2 (Punto de Comparación)' : 'Data 2 (Ponto Atual / Comparação)'}
                         </label>
                         <select
                           value={compareDateB}
@@ -1814,7 +1838,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                         <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 sm:p-5">
                           <div className="flex items-center justify-between mb-3">
                             <span className="font-bold text-sm text-slate-200 flex items-center gap-1.5">
-                              <Scale className="w-4 h-4 text-emerald-400" /> Comparação de Peso
+                              <Scale className="w-4 h-4 text-emerald-400" /> {language === 'en' ? 'Weight Comparison' : language === 'es' ? 'Comparación de Peso' : 'Comparação de Peso'}
                             </span>
                             {periodComparisonData.weightDeltaComp !== undefined && (
                               <span
@@ -1842,7 +1866,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                               <span className="text-xl font-bold text-slate-100 tabular-nums">
                                 {periodComparisonData.weightA !== undefined
                                   ? `${periodComparisonData.weightA} kg`
-                                  : 'Sem registro'}
+                                  : (language === 'en' ? 'No record' : language === 'es' ? 'Sin registro' : 'Sem registro')}
                               </span>
                             </div>
                             <div className="text-right">
@@ -1852,7 +1876,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                               <span className="text-xl font-bold text-slate-100 tabular-nums">
                                 {periodComparisonData.weightB !== undefined
                                   ? `${periodComparisonData.weightB} kg`
-                                  : 'Sem registro'}
+                                  : (language === 'en' ? 'No record' : language === 'es' ? 'Sin registro' : 'Sem registro')}
                               </span>
                             </div>
                           </div>
@@ -1860,12 +1884,12 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
                         <div>
                           <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-                            Medidas Corporais ({formatDateBR(compareDateA)} vs {formatDateBR(compareDateB)})
+                            {language === 'en' ? 'Body Measurements' : language === 'es' ? 'Medidas Corporales' : 'Medidas Corporais'} ({formatDateBR(compareDateA)} vs {formatDateBR(compareDateB)})
                           </h4>
 
                           {periodComparisonData.regionsComparison.length === 0 ? (
                             <div className="text-center py-6 text-slate-500 text-xs">
-                              Nenhuma medida registrada em nenhuma das duas datas selecionadas.
+                              {language === 'en' ? 'No measurements logged on either date.' : language === 'es' ? 'Sin medidas registradas en ninguna de las dos fechas.' : 'Nenhuma medida registrada em nenhuma das duas datas selecionadas.'}
                             </div>
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1876,7 +1900,9 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                 >
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="font-bold text-xs text-slate-200">
-                                      {r.name}
+                                      {MEASUREMENT_LABELS[r.key as MeasurementKey]
+                                        ? (language === 'en' ? MEASUREMENT_LABELS[r.key as MeasurementKey].en : language === 'es' ? MEASUREMENT_LABELS[r.key as MeasurementKey].es : MEASUREMENT_LABELS[r.key as MeasurementKey].name)
+                                        : r.name}
                                     </span>
                                     {r.diff !== undefined ? (
                                       <span
@@ -1892,20 +1918,20 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                       </span>
                                     ) : (
                                       <span className="text-[10px] text-slate-500 italic">
-                                        Não comparável
+                                        {language === 'en' ? 'Not comparable' : language === 'es' ? 'No comparable' : 'Não comparável'}
                                       </span>
                                     )}
                                   </div>
 
                                   <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60">
                                     <div>
-                                      <span className="text-[10px] text-slate-500 block">Ponto A:</span>
+                                      <span className="text-[10px] text-slate-500 block">{language === 'en' ? 'Point A:' : language === 'es' ? 'Punto A:' : 'Ponto A:'}</span>
                                       <span className="font-semibold text-slate-300 tabular-nums">
                                         {r.valA !== undefined ? `${r.valA} cm` : '—'}
                                       </span>
                                     </div>
                                     <div className="text-right">
-                                      <span className="text-[10px] text-slate-500 block">Ponto B:</span>
+                                      <span className="text-[10px] text-slate-500 block">{language === 'en' ? 'Point B:' : language === 'es' ? 'Punto B:' : 'Ponto B:'}</span>
                                       <span className="font-bold text-slate-100 tabular-nums">
                                         {r.valB !== undefined ? `${r.valB} cm` : '—'}
                                       </span>
@@ -1929,11 +1955,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h3 className="text-base font-bold text-slate-100">
-                  Linha do Tempo dos Registros
+                  {language === 'en' ? 'Records Timeline' : language === 'es' ? 'Línea de Tiempo de Registros' : 'Linha do Tempo dos Registros'}
                 </h3>
 
                 <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-slate-500 font-medium">Filtrar:</span>
+                  <span className="text-slate-500 font-medium">{language === 'en' ? 'Filter:' : language === 'es' ? 'Filtrar:' : 'Filtrar:'}</span>
                   <div className="flex items-center gap-1 p-1 bg-slate-900 border border-slate-800 rounded-xl">
                     <button
                       type="button"
@@ -1944,7 +1970,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Todos
+                      {language === 'en' ? 'All' : language === 'es' ? 'Todos' : 'Todos'}
                     </button>
                     <button
                       type="button"
@@ -1955,7 +1981,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Apenas Peso
+                      {language === 'en' ? 'Weight Only' : language === 'es' ? 'Solo Peso' : 'Apenas Peso'}
                     </button>
                     <button
                       type="button"
@@ -1966,7 +1992,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Apenas Medidas
+                      {language === 'en' ? 'Measurements Only' : language === 'es' ? 'Solo Medidas' : 'Apenas Medidas'}
                     </button>
                   </div>
                 </div>
@@ -1974,7 +2000,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
 
               {unifiedTimeline.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 text-xs bg-slate-900/60 rounded-2xl border border-dashed border-slate-800">
-                  Nenhum registro encontrado para o filtro selecionado.
+                  {language === 'en' ? 'No records found for the selected filter.' : language === 'es' ? 'Sin registros para el filtro seleccionado.' : 'Nenhum registro encontrado para o filtro selecionado.'}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -2015,23 +2041,24 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                 setShowWeightModal(true);
                               }}
                               className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition-colors"
-                              title="Editar pesagem"
+                              title={t.common.edit}
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => {
-                                if (
-                                  confirm(
-                                    `Deseja excluir a pesagem de ${w.weightKg} kg do dia ${formatDateBR(w.date)}?`
-                                  )
-                                ) {
+                                const msg = language === 'en'
+                                  ? `Delete weight record of ${w.weightKg} kg on ${formatDateBR(w.date)}?`
+                                  : language === 'es'
+                                  ? `¿Eliminar registro de ${w.weightKg} kg del ${formatDateBR(w.date)}?`
+                                  : `Deseja excluir a pesagem de ${w.weightKg} kg do dia ${formatDateBR(w.date)}?`;
+                                if (confirm(msg)) {
                                   onDeleteWeight(w.id);
                                 }
                               }}
                               className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors"
-                              title="Excluir pesagem"
+                              title={t.common.delete}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -2059,10 +2086,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
                                   <span className="font-bold text-sm text-slate-100">
-                                    Medidas Corporais
+                                    {language === 'en' ? 'Body Measurements' : language === 'es' ? 'Medidas Corporales' : 'Medidas Corporais'}
                                   </span>
                                   <span className="text-[11px] text-slate-400">
-                                    · {formatDateBR(m.date)} ({measureEntries.length} regiões)
+                                    · {formatDateBR(m.date)} ({measureEntries.length} {language === 'en' ? 'regions' : language === 'es' ? 'regiones' : 'regiões'})
                                   </span>
                                 </div>
                                 {m.notes && (
@@ -2081,23 +2108,24 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                   setShowMeasurementsModal(true);
                                 }}
                                 className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition-colors"
-                                title="Editar medidas"
+                                title={t.common.edit}
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (
-                                    confirm(
-                                      `Deseja excluir as medidas do dia ${formatDateBR(m.date)}?`
-                                    )
-                                  ) {
+                                  const msg = language === 'en'
+                                    ? `Delete measurements on ${formatDateBR(m.date)}?`
+                                    : language === 'es'
+                                    ? `¿Eliminar medidas del ${formatDateBR(m.date)}?`
+                                    : `Deseja excluir as medidas do dia ${formatDateBR(m.date)}?`;
+                                  if (confirm(msg)) {
                                     onDeleteMeasurement(m.id);
                                   }
                                 }}
                                 className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors"
-                                title="Excluir medidas"
+                                title={t.common.delete}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -2110,7 +2138,11 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                                 key={k}
                                 className="bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5"
                               >
-                                <span className="text-slate-400">{MEASUREMENT_LABELS[k].short}:</span>
+                                <span className="text-slate-400">
+                                  {MEASUREMENT_LABELS[k]
+                                    ? (language === 'en' ? MEASUREMENT_LABELS[k].en : language === 'es' ? MEASUREMENT_LABELS[k].es : MEASUREMENT_LABELS[k].short)
+                                    : k}:
+                                </span>
                                 <span className="font-bold text-slate-200 tabular-nums">{val} cm</span>
                               </div>
                             ))}
@@ -2133,10 +2165,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 <div>
                   <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
                     <Camera className="w-5 h-5 text-emerald-400" />
-                    <span>Galeria de Fotos Corporais</span>
+                    <span>{language === 'en' ? 'Body Photo Gallery' : language === 'es' ? 'Galería de Fotos Corporales' : 'Galeria de Fotos Corporais'}</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Fotos armazenadas de forma 100% privada e local no seu navegador.
+                    {language === 'en' ? 'Photos stored 100% privately and locally in your browser.' : language === 'es' ? 'Fotos guardadas 100% privadas y locales en tu navegador.' : 'Fotos armazenadas de forma 100% privada e local no seu navegador.'}
                   </p>
                 </div>
 
@@ -2148,7 +2180,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5"
                     >
                       <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Comparar Lado a Lado</span>
+                      <span>{language === 'en' ? 'Compare Side-by-Side' : language === 'es' ? 'Comparar Lado a Lado' : 'Comparar Lado a Lado'}</span>
                     </button>
                   )}
 
@@ -2158,7 +2190,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
-                    <span>Adicionar Foto</span>
+                    <span>{language === 'en' ? 'Add Photo' : language === 'es' ? 'Añadir Foto' : 'Adicionar Foto'}</span>
                   </button>
                 </div>
               </div>
@@ -2167,10 +2199,10 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                 <div className="text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800 p-8">
                   <Camera className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                   <h4 className="text-base font-bold text-slate-200 mb-1">
-                    Nenhuma foto cadastrada ainda
+                    {language === 'en' ? 'No photos logged yet' : language === 'es' ? 'Sin fotos registradas todavía' : 'Nenhuma foto cadastrada ainda'}
                   </h4>
                   <p className="text-xs text-slate-400 mb-4 max-w-sm mx-auto">
-                    Tire fotos periódicas no espelho para visualizar sua transformação estética e composição corporal.
+                    {language === 'en' ? 'Take periodic mirror photos to visualize your aesthetic transformation and physique.' : language === 'es' ? 'Toma fotos periódicas para ver tu transformación física.' : 'Tire fotos periódicas no espelho para visualizar sua transformação estética e composição corporal.'}
                   </p>
                   <button
                     type="button"
@@ -2178,7 +2210,7 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                     className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all inline-flex items-center gap-1.5"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
-                    <span>Adicionar Primeira Foto</span>
+                    <span>{language === 'en' ? 'Add First Photo' : language === 'es' ? 'Añadir Primera Foto' : 'Adicionar Primeira Foto'}</span>
                   </button>
                 </div>
               ) : (
@@ -2191,18 +2223,23 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                       <div className="relative aspect-[3/4] bg-slate-950 flex items-center justify-center overflow-hidden">
                         <img
                           src={p.photoDataUrl}
-                          alt={`Foto corporal ${p.date}`}
+                          alt={`Body photo ${p.date}`}
                           className="w-full h-full object-contain"
                         />
                         <button
                           type="button"
                           onClick={() => {
-                            if (confirm(`Deseja excluir esta foto de ${formatDateBR(p.date)}?`)) {
+                            const msg = language === 'en'
+                              ? `Delete this photo from ${formatDateBR(p.date)}?`
+                              : language === 'es'
+                              ? `¿Eliminar esta foto del ${formatDateBR(p.date)}?`
+                              : `Deseja excluir esta foto de ${formatDateBR(p.date)}?`;
+                            if (confirm(msg)) {
                               onDeletePhoto(p.id);
                             }
                           }}
                           className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg border border-slate-700/80 opacity-0 group-hover:opacity-100 transition-all"
-                          title="Excluir foto"
+                          title={t.common.delete}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -2214,7 +2251,13 @@ export const BodyEvolution: React.FC<BodyEvolutionProps> = ({
                             {formatDateBR(p.date)}
                           </span>
                           <span className="capitalize text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                            {p.category || 'Geral'}
+                            {p.category
+                              ? (language === 'en'
+                                  ? (p.category === 'frente' ? 'Front' : p.category === 'lado' ? 'Side' : p.category === 'costas' ? 'Back' : 'Other')
+                                  : language === 'es'
+                                  ? (p.category === 'frente' ? 'Frente' : p.category === 'lado' ? 'Perfil' : p.category === 'costas' ? 'Espalda' : 'Otro')
+                                  : p.category)
+                              : (language === 'en' ? 'General' : language === 'es' ? 'General' : 'Geral')}
                           </span>
                         </div>
                         {p.notes && (

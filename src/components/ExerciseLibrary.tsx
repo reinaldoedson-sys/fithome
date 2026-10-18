@@ -3,6 +3,7 @@ import { Exercise, MuscleGroup, HomeEquipment } from '../types/workout';
 import { EXERCISES, MUSCLE_LABELS, HOME_EQUIPMENT_LABELS } from '../data/exercises';
 import { BodyMap } from './BodyMap';
 import { useLanguage } from '../i18n/LanguageContext';
+import { getExerciseName } from '../utils/i18nHelpers';
 import {
   Search,
   Filter,
@@ -63,8 +64,8 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = ex.namePt.toLowerCase().includes(q) || ex.name.toLowerCase().includes(q);
-      const matchMuscle = MUSCLE_LABELS[ex.primaryMuscle].pt.toLowerCase().includes(q);
-      const matchEq = HOME_EQUIPMENT_LABELS[ex.equipment].pt.toLowerCase().includes(q);
+      const matchMuscle = (MUSCLE_LABELS[ex.primaryMuscle][language] || MUSCLE_LABELS[ex.primaryMuscle].pt).toLowerCase().includes(q);
+      const matchEq = (HOME_EQUIPMENT_LABELS[ex.equipment][language] || HOME_EQUIPMENT_LABELS[ex.equipment].pt).toLowerCase().includes(q);
       if (!matchName && !matchMuscle && !matchEq) return false;
     }
 
@@ -77,14 +78,10 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-display">
-            {language === 'en' ? 'Home Exercises & Muscle Map' : language === 'es' ? 'Ejercicios en Casa y Mapa Muscular' : 'Exercícios em Casa & Mapa Muscular'}
+            {t.exercises.title}
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {language === 'en'
-              ? 'Tap muscles on the anatomy map to discover exercises using bodyweight, couch, chair, or towel.'
-              : language === 'es'
-              ? 'Toca los músculos del cuerpo humano para encontrar ejercicios con peso corporal, sofá, silla o toalla.'
-              : 'Toque nos músculos do corpo humano para encontrar exercícios usando peso corporal, sofá, cadeira ou toalha.'}
+            {t.exercises.subtitle}
           </p>
         </div>
 
@@ -94,7 +91,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           className="self-start sm:self-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-2 whitespace-nowrap"
         >
           <Filter className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{showBodyMap ? (language === 'en' ? 'Hide Muscle Map' : language === 'es' ? 'Ocultar Mapa Muscular' : 'Ocultar Mapa Corporal') : (language === 'en' ? 'Show Muscle Map' : language === 'es' ? 'Mostrar Mapa Muscular' : 'Exibir Mapa Corporal')}</span>
+          <span>{showBodyMap ? t.exercises.hideMap : t.exercises.showMap}</span>
         </button>
       </div>
 
@@ -117,7 +114,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={language === 'en' ? 'Search by exercise, couch, towel, wall, push-up...' : language === 'es' ? 'Buscar por ejercicio, sofá, toalla, pared, flexión...' : 'Buscar por exercício, sofá, toalha, parede, flexão...'}
+              placeholder={t.exercises.searchPlaceholder}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
             {searchQuery && (
@@ -142,7 +139,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             }`}
           >
             <VolumeX className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="whitespace-nowrap">{language === 'en' ? 'Silent (Apartment)' : language === 'es' ? 'Silencioso (Piso)' : 'Sem Barulho (Apartamento)'}</span>
+            <span className="whitespace-nowrap">{t.exercises.silentToggle}</span>
           </button>
 
           {/* Quick Active Filter Indicator */}
@@ -157,7 +154,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
               }}
               className="px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors whitespace-nowrap"
             >
-              {language === 'en' ? 'Reset Filters' : language === 'es' ? 'Restablecer Filtros' : 'Resetar Filtros'}
+              {t.exercises.resetFilters}
             </button>
           )}
         </div>
@@ -165,7 +162,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         {/* Equipment horizontal bar */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 text-xs">
           <span className="text-slate-400 font-medium text-xs mr-1 shrink-0">
-            {language === 'en' ? 'Equipment:' : language === 'es' ? 'Accesorio:' : 'Acessório:'}
+            {t.exercises.accessoryLabel}
           </span>
           <button
             type="button"
@@ -200,15 +197,11 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
       <div>
         <div className="flex items-center justify-between mb-3 text-xs text-slate-400">
           <span>
-            {language === 'en'
-              ? <>Showing <strong className="text-slate-200 tabular-nums">{filteredExercises.length}</strong> home exercises</>
-              : language === 'es'
-              ? <>Mostrando <strong className="text-slate-200 tabular-nums">{filteredExercises.length}</strong> ejercicios para casa</>
-              : <>Mostrando <strong className="text-slate-200 tabular-nums">{filteredExercises.length}</strong> exercícios para treinar em casa</>}
+            {t.exercises.showingCount(filteredExercises.length)}
           </span>
           {selectedMuscles.length > 0 && (
             <span>
-              {language === 'en' ? 'Filtered by: ' : language === 'es' ? 'Filtrado por: ' : 'Filtrado por: '}
+              {t.exercises.filteredBy}
               {selectedMuscles.map(m => MUSCLE_LABELS[m][language] || MUSCLE_LABELS[m].pt).join(', ')}
             </span>
           )}
@@ -218,79 +211,86 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           <div className="text-center py-12 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 p-8">
             <Dumbbell className="w-10 h-10 text-slate-600 mx-auto mb-2" />
             <h4 className="text-base font-semibold text-slate-200">
-              {language === 'en' ? 'No exercises found with these filters' : language === 'es' ? 'No se encontraron ejercicios con estos filtros' : 'Nenhum exercício encontrado com estes filtros'}
+              {t.exercises.noExercises}
             </h4>
             <p className="text-xs text-slate-400 mt-1">
-              {language === 'en' ? 'Try resetting muscle or equipment filters.' : language === 'es' ? 'Prueba a restablecer los filtros de músculos o accesorios.' : 'Experimente limpar os filtros de músculos ou acessórios caseiros.'}
+              {t.exercises.noExercisesDesc}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredExercises.map(exercise => (
-              <div
-                key={exercise.id}
-                className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                      <h3 className="font-bold text-sm sm:text-base text-slate-100 group-hover:text-emerald-400 transition-colors">
-                        {language === 'en' ? exercise.name : exercise.namePt}
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        {HOME_EQUIPMENT_LABELS[exercise.equipment].icon} {HOME_EQUIPMENT_LABELS[exercise.equipment][language] || HOME_EQUIPMENT_LABELS[exercise.equipment].pt}
-                      </p>
+            {filteredExercises.map(exercise => {
+              const displayName = getExerciseName(exercise, language);
+              const muscleLabel = MUSCLE_LABELS[exercise.primaryMuscle][language] || MUSCLE_LABELS[exercise.primaryMuscle].pt;
+              const eqLabel = HOME_EQUIPMENT_LABELS[exercise.equipment][language] || HOME_EQUIPMENT_LABELS[exercise.equipment].pt;
+              const difficultyLabel = t.exercises.difficulty[exercise.difficulty] || exercise.difficulty;
+
+              return (
+                <div
+                  key={exercise.id}
+                  className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <h3 className="font-bold text-sm sm:text-base text-slate-100 group-hover:text-emerald-400 transition-colors">
+                          {displayName}
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          {HOME_EQUIPMENT_LABELS[exercise.equipment].icon} {eqLabel}
+                        </p>
+                      </div>
+
+                      <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
+                        {muscleLabel}
+                      </span>
                     </div>
 
-                    <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
-                      {MUSCLE_LABELS[exercise.primaryMuscle][language] || MUSCLE_LABELS[exercise.primaryMuscle].pt}
-                    </span>
+                    <p className="text-xs text-slate-400 line-clamp-2 my-2.5">
+                      {exercise.instructions[0]}
+                    </p>
+
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1 text-slate-400">
+                        {exercise.measurementType === 'seconds' ? (
+                          <>
+                            <Clock className="w-3 h-3 text-emerald-400" />
+                            <span>{language === 'en' ? 'Isometrics (Seconds)' : language === 'es' ? 'Isometría (Segundos)' : 'Isometria (Segundos)'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Repeat className="w-3 h-3 text-emerald-400" />
+                            <span>{t.common.reps}</span>
+                          </>
+                        )}
+                      </span>
+                      <span>·</span>
+                      <span className="capitalize">{difficultyLabel}</span>
+                    </div>
                   </div>
 
-                  <p className="text-xs text-slate-400 line-clamp-2 my-2.5">
-                    {exercise.instructions[0]}
-                  </p>
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedExerciseModal(exercise)}
+                      className="text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                      <span>{language === 'en' ? 'How to do' : language === 'es' ? 'Cómo hacer' : 'Como Fazer'}</span>
+                    </button>
 
-                  <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                    <span className="flex items-center gap-1 text-slate-400">
-                      {exercise.measurementType === 'seconds' ? (
-                        <>
-                          <Clock className="w-3 h-3 text-emerald-400" />
-                          <span>{language === 'en' ? 'Isometrics (Seconds)' : language === 'es' ? 'Isometría (Segundos)' : 'Isometria (Segundos)'}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Repeat className="w-3 h-3 text-emerald-400" />
-                          <span>{t.common.reps}</span>
-                        </>
-                      )}
-                    </span>
-                    <span>·</span>
-                    <span className="capitalize">{exercise.difficulty}</span>
+                    <button
+                      type="button"
+                      onClick={() => onStartWithExercise(exercise)}
+                      className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold rounded-lg text-xs transition-colors flex items-center gap-1"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>{t.common.start}</span>
+                    </button>
                   </div>
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedExerciseModal(exercise)}
-                    className="text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
-                  >
-                    <Info className="w-3.5 h-3.5" />
-                    <span>{language === 'en' ? 'How to do' : language === 'es' ? 'Cómo hacer' : 'Como Fazer'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onStartWithExercise(exercise)}
-                    className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold rounded-lg text-xs transition-colors flex items-center gap-1"
-                  >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>{t.common.start}</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -303,7 +303,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-800">
               <div>
                 <h3 className="text-lg sm:text-xl font-bold text-slate-100">
-                  {language === 'en' ? selectedExerciseModal.name : selectedExerciseModal.namePt}
+                  {getExerciseName(selectedExerciseModal, language)}
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
                   {HOME_EQUIPMENT_LABELS[selectedExerciseModal.equipment].icon}{' '}
@@ -324,7 +324,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             <div className="py-4 border-b border-slate-800 flex flex-wrap gap-4 text-xs">
               <div>
                 <span className="text-slate-500 block mb-1">
-                  {language === 'en' ? 'Target Muscle:' : language === 'es' ? 'Músculo Objetivo:' : 'Músculo Alvo:'}
+                  {t.exercises.primaryMuscle}:
                 </span>
                 <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
                   {MUSCLE_LABELS[selectedExerciseModal.primaryMuscle][language] || MUSCLE_LABELS[selectedExerciseModal.primaryMuscle].pt}
@@ -333,7 +333,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
               {selectedExerciseModal.secondaryMuscles.length > 0 && (
                 <div>
                   <span className="text-slate-500 block mb-1">
-                    {language === 'en' ? 'Secondary:' : language === 'es' ? 'Secundarios:' : 'Secundários:'}
+                    {t.exercises.secondaryMuscles}:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedExerciseModal.secondaryMuscles.map(sm => (
@@ -352,7 +352,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             {/* Step-by-Step Instructions */}
             <div className="py-4 border-b border-slate-800">
               <h4 className="text-sm font-bold text-slate-200 mb-3">
-                {language === 'en' ? 'How to Execute at Home' : language === 'es' ? 'Cómo Ejecutar en Casa' : 'Como Executar em Casa'}
+                {t.exercises.instructionsTitle}
               </h4>
               <ol className="space-y-2.5 text-xs sm:text-sm text-slate-300">
                 {selectedExerciseModal.instructions.map((step, idx) => (
@@ -370,7 +370,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             {selectedExerciseModal.homeTips.length > 0 && (
               <div className="py-4">
                 <h4 className="text-sm font-bold text-amber-400 mb-2">
-                  {language === 'en' ? 'Home Tips (Safety & Adaptations)' : language === 'es' ? 'Consejos para Casa (Adaptaciones y Seguridad)' : 'Dicas para Fazer em Casa (Adaptações & Segurança)'}
+                  {t.exercises.tips}
                 </h4>
                 <ul className="space-y-2 text-xs text-slate-300">
                   {selectedExerciseModal.homeTips.map((tip, idx) => (
@@ -402,7 +402,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                 className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>{language === 'en' ? 'Start Workout with this Exercise' : language === 'es' ? 'Iniciar Entrenamiento con este Ejercicio' : 'Iniciar Treino com este Exercício'}</span>
+                <span>{t.exercises.startWithExercise}</span>
               </button>
             </div>
           </div>

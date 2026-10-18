@@ -9,7 +9,7 @@ import { BmiInfo, BmiClassification } from '../types/bodyEvolution';
  * - Rounds only for final display (1 decimal place).
  * - Validates finite, positive numbers for weight and realistic height (50 - 280 cm).
  */
-export function calculateBmi(weightKg?: number, heightCm?: number): BmiInfo | null {
+export function calculateBmi(weightKg?: number, heightCm?: number, language: 'pt' | 'en' | 'es' = 'pt'): BmiInfo | null {
   if (
     typeof weightKg !== 'number' ||
     !Number.isFinite(weightKg) ||
@@ -40,33 +40,57 @@ export function calculateBmi(weightKg?: number, heightCm?: number): BmiInfo | nu
   // WHO Adult Thresholds classified using RAW unrounded BMI
   if (bmiRaw < 18.5) {
     classification = 'abaixo_peso';
-    label = 'Abaixo do peso';
-    description = 'Peso inferior à faixa de referência recomendada para a estatura.';
+    label = language === 'en' ? 'Underweight' : language === 'es' ? 'Bajo peso' : 'Abaixo do peso';
+    description = language === 'en'
+      ? 'Weight lower than recommended reference range for height.'
+      : language === 'es'
+      ? 'Peso inferior al rango de referencia recomendado para la estatura.'
+      : 'Peso inferior à faixa de referência recomendada para a estatura.';
     color = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
   } else if (bmiRaw < 25.0) {
     classification = 'normal';
-    label = 'Eutrofia / Normal';
-    description = 'Faixa de equilíbrio nutricional recomendada pela OMS para adultos.';
+    label = language === 'en' ? 'Normal weight' : language === 'es' ? 'Peso normal' : 'Eutrofia / Normal';
+    description = language === 'en'
+      ? 'Nutritional balance range recommended by WHO for adults.'
+      : language === 'es'
+      ? 'Rango de equilibrio nutricional recomendado por la OMS para adultos.'
+      : 'Faixa de equilíbrio nutricional recomendada pela OMS para adultos.';
     color = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
   } else if (bmiRaw < 30.0) {
     classification = 'sobrepeso';
-    label = 'Sobrepeso';
-    description = 'Leve elevação do peso em relação à estatura. Recomenda-se atenção à composição corporal.';
+    label = language === 'en' ? 'Overweight' : language === 'es' ? 'Sobrepeso' : 'Sobrepeso';
+    description = language === 'en'
+      ? 'Slight elevation in weight relative to height.'
+      : language === 'es'
+      ? 'Ligera elevación del peso en relación con la estatura.'
+      : 'Leve elevação do peso em relação à estatura. Recomenda-se atenção à composição corporal.';
     color = 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
   } else if (bmiRaw < 35.0) {
     classification = 'obesidade_1';
-    label = 'Obesidade Grau I';
-    description = 'Elevação moderada do peso. A prática de exercícios e hábitos saudáveis é indicada.';
+    label = language === 'en' ? 'Obesity Class I' : language === 'es' ? 'Obesidad Grado I' : 'Obesidade Grau I';
+    description = language === 'en'
+      ? 'Moderate elevation. Regular exercise and balanced nutrition advised.'
+      : language === 'es'
+      ? 'Elevación moderada del peso. Se recomienda ejercicio regular.'
+      : 'Elevação moderada do peso. A prática de exercícios e hábitos saudáveis é indicada.';
     color = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
   } else if (bmiRaw < 40.0) {
     classification = 'obesidade_2';
-    label = 'Obesidade Grau II';
-    description = 'Elevação severa. Acompanhamento multiprofissional em saúde é recomendado.';
+    label = language === 'en' ? 'Obesity Class II' : language === 'es' ? 'Obesidad Grado II' : 'Obesidade Grau II';
+    description = language === 'en'
+      ? 'Severe elevation. Multidisciplinary healthcare recommended.'
+      : language === 'es'
+      ? 'Elevación severa. Se recomienda seguimiento profesional.'
+      : 'Elevação severa. Acompanhamento multiprofissional em saúde é recomendado.';
     color = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
   } else {
     classification = 'obesidade_3';
-    label = 'Obesidade Grau III';
-    description = 'Elevação muito severa da relação peso/altura. Atenção médica prioritária recomendada.';
+    label = language === 'en' ? 'Obesity Class III' : language === 'es' ? 'Obesidad Grado III' : 'Obesidade Grau III';
+    description = language === 'en'
+      ? 'Very severe elevation. Priority medical attention advised.'
+      : language === 'es'
+      ? 'Elevación muy severa. Atención médica prioritaria recomendada.'
+      : 'Elevação muito severa da relação peso/altura. Atenção médica prioritária recomendada.';
     color = 'text-red-400 bg-red-500/10 border-red-500/20';
   }
 

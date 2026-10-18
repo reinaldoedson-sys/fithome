@@ -303,7 +303,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
 
     const session: WorkoutSession = {
       id: `workout-${Date.now()}`,
-      title: title.trim() || 'Treino em Casa Concluído',
+      title: title.trim() || defaultTitle,
       startTime,
       endTime,
       durationSeconds: elapsedSeconds,
@@ -336,7 +336,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
   const filteredExercisesForModal = EXERCISES.filter(ex =>
     ex.namePt.toLowerCase().includes(exerciseSearch.toLowerCase()) ||
     ex.name.toLowerCase().includes(exerciseSearch.toLowerCase()) ||
-    MUSCLE_LABELS[ex.primaryMuscle].pt.toLowerCase().includes(exerciseSearch.toLowerCase())
+    MUSCLE_LABELS[ex.primaryMuscle].pt.toLowerCase().includes(exerciseSearch.toLowerCase()) ||
+    (MUSCLE_LABELS[ex.primaryMuscle][language] && MUSCLE_LABELS[ex.primaryMuscle][language].toLowerCase().includes(exerciseSearch.toLowerCase()))
   );
 
   return (
@@ -517,10 +518,10 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                                     setTypeLabels[set.type].badge
                                   }`}
                                 >
-                                  <option value="normal">Normal</option>
-                                  <option value="warmup">Aquecimento</option>
-                                  <option value="dropset">Drop Set</option>
-                                  <option value="failure">Até a Falha</option>
+                                  <option value="normal">{t.workoutActive.normal}</option>
+                                  <option value="warmup">{t.workoutActive.warmup}</option>
+                                  <option value="dropset">{t.workoutActive.dropset}</option>
+                                  <option value="failure">{t.workoutActive.failure}</option>
                                 </select>
                               </td>
 
@@ -557,7 +558,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                                     min="0"
                                     value={set.weightKg === 0 ? '' : set.weightKg}
                                     placeholder="0"
-                                    title="0 = Apenas peso corporal. Adicione se usar mochila ou garrafas."
+                                    title={language === 'en' ? '0 = Bodyweight only. Add weight if using backpack or weights.' : language === 'es' ? '0 = Solo peso corporal. Añade peso si usas mochila o pesas.' : '0 = Apenas peso corporal. Adicione se usar mochila ou garrafas.'}
                                     onChange={e =>
                                       handleUpdateSet(
                                         exIdx,
@@ -582,7 +583,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                                       ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30 ring-2 ring-emerald-400'
                                       : 'bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-slate-200'
                                   }`}
-                                  title={isComplete ? 'Série concluída' : 'Marcar como concluída'}
+                                  title={isComplete ? t.workoutActive.completeSet : t.workoutActive.completeSet}
                                 >
                                   <Check className="w-4 h-4 stroke-[3]" />
                                 </button>
@@ -594,7 +595,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                                   type="button"
                                   onClick={() => handleRemoveSet(exIdx, setIdx)}
                                   className="text-slate-600 hover:text-rose-400 p-1 rounded transition-colors"
-                                  title="Remover série"
+                                  title={t.common.delete}
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -614,7 +615,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                       className="px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1.5"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Adicionar Série</span>
+                      <span>{language === 'en' ? 'Add Set' : language === 'es' ? 'Añadir Serie' : 'Adicionar Série'}</span>
                     </button>
 
                     <button
@@ -623,7 +624,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                       className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
                     >
                       <TimerIcon className="w-3.5 h-3.5" />
-                      <span>Descanso 60s</span>
+                      <span>{t.restTimer.rest} 60s</span>
                     </button>
                   </div>
                 </div>
@@ -633,13 +634,13 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             {/* Workout Notes */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
               <label htmlFor="workout-notes-input" className="block text-xs font-semibold text-slate-300 mb-2">
-                Anotações do Treino em Casa (Opcional)
+                {language === 'en' ? 'Workout Notes (Optional)' : language === 'es' ? 'Notas del Entrenamiento (Opcional)' : 'Anotações do Treino em Casa (Opcional)'}
               </label>
               <textarea
                 id="workout-notes-input"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                placeholder="Ex: Fiz flexões no sofá, aumentei 5 segundos na prancha, usei mochila com 4 livros..."
+                placeholder={t.workoutActive.notesPlaceholder}
                 rows={2}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
@@ -653,7 +654,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 className="w-full py-3.5 border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-900/30 hover:bg-slate-900 text-slate-300 hover:text-emerald-300 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                <span>Adicionar Exercício Caseiro ao Treino</span>
+                <span>{t.workoutActive.addExercise}</span>
               </button>
             </div>
           </div>
@@ -677,7 +678,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95">
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="font-bold text-slate-100 text-base">Adicionar Exercício Caseiro</h3>
+              <h3 className="font-bold text-slate-100 text-base">{t.workoutActive.addExercise}</h3>
               <button
                 type="button"
                 onClick={() => setShowAddExerciseModal(false)}
@@ -692,31 +693,37 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 type="text"
                 value={exerciseSearch}
                 onChange={e => setExerciseSearch(e.target.value)}
-                placeholder="Buscar por exercício, sofá, toalha, parede ou músculo..."
+                placeholder={t.exercises.searchPlaceholder}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 autoFocus
               />
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {filteredExercisesForModal.map(exercise => (
-                <button
-                  key={exercise.id}
-                  type="button"
-                  onClick={() => handleAddExerciseToWorkout(exercise.id)}
-                  className="w-full text-left p-3 rounded-xl bg-slate-950/70 hover:bg-slate-800/80 border border-slate-800/80 hover:border-slate-700 transition-colors flex items-center justify-between group"
-                >
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">
-                      {exercise.namePt}
-                    </h4>
-                    <p className="text-xs text-slate-500">
-                      {HOME_EQUIPMENT_LABELS[exercise.equipment].pt} · {MUSCLE_LABELS[exercise.primaryMuscle].pt}
-                    </p>
-                  </div>
-                  <Plus className="w-4 h-4 text-slate-500 group-hover:text-emerald-400" />
-                </button>
-              ))}
+              {filteredExercisesForModal.map(exercise => {
+                const displayName = language === 'en' ? exercise.name : exercise.namePt;
+                const eqLabel = HOME_EQUIPMENT_LABELS[exercise.equipment][language] || HOME_EQUIPMENT_LABELS[exercise.equipment].pt;
+                const muscleLabel = MUSCLE_LABELS[exercise.primaryMuscle][language] || MUSCLE_LABELS[exercise.primaryMuscle].pt;
+
+                return (
+                  <button
+                    key={exercise.id}
+                    type="button"
+                    onClick={() => handleAddExerciseToWorkout(exercise.id)}
+                    className="w-full text-left p-3 rounded-xl bg-slate-950/70 hover:bg-slate-800/80 border border-slate-800/80 hover:border-slate-700 transition-colors flex items-center justify-between group"
+                  >
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">
+                        {displayName}
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        {eqLabel} · {muscleLabel}
+                      </p>
+                    </div>
+                    <Plus className="w-4 h-4 text-slate-500 group-hover:text-emerald-400" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -729,10 +736,24 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
               <Check className="w-6 h-6 stroke-[3]" />
             </div>
-            <h3 className="text-lg font-bold text-slate-100 mb-2">Concluir treino em casa?</h3>
+            <h3 className="text-lg font-bold text-slate-100 mb-2">{t.workoutActive.finishDialogTitle}?</h3>
             <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              Você completou <strong className="text-slate-200">{completedSetsCount} séries</strong> em{' '}
-              <strong className="text-slate-200">{formatTime(elapsedSeconds)}</strong>. Excelente dedicação!
+              {language === 'en' ? (
+                <>
+                  You completed <strong className="text-slate-200">{completedSetsCount} sets</strong> in{' '}
+                  <strong className="text-slate-200">{formatTime(elapsedSeconds)}</strong>. Outstanding dedication!
+                </>
+              ) : language === 'es' ? (
+                <>
+                  Completaste <strong className="text-slate-200">{completedSetsCount} series</strong> en{' '}
+                  <strong className="text-slate-200">{formatTime(elapsedSeconds)}</strong>. ¡Excelente dedicación!
+                </>
+              ) : (
+                <>
+                  Você completou <strong className="text-slate-200">{completedSetsCount} séries</strong> em{' '}
+                  <strong className="text-slate-200">{formatTime(elapsedSeconds)}</strong>. Excelente dedicação!
+                </>
+              )}
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -740,7 +761,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 onClick={() => setShowFinishConfirm(false)}
                 className="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs sm:text-sm transition-colors"
               >
-                Continuar Treinando
+                {language === 'en' ? 'Keep Training' : language === 'es' ? 'Continuar Entrenando' : 'Continuar Treinando'}
               </button>
               <button
                 type="button"
@@ -750,7 +771,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 }}
                 className="flex-1 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition-all shadow-md shadow-emerald-500/20"
               >
-                Salvar & Registrar
+                {language === 'en' ? 'Save & Log' : language === 'es' ? 'Guardar y Registrar' : 'Salvar & Registrar'}
               </button>
             </div>
           </div>

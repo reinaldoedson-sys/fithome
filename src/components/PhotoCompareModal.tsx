@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ProgressPhoto } from '../types/bodyEvolution';
 import { formatDateBR } from '../utils/bodyDateUtils';
+import { useLanguage } from '../i18n/LanguageContext';
 import { X, ArrowLeftRight } from 'lucide-react';
 
 interface PhotoCompareModalProps {
@@ -12,6 +13,8 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
   photos,
   onClose
 }) => {
+  const { language, t } = useLanguage();
+
   // Sort photos chronologically (oldest to newest)
   const sortedPhotos = [...photos].sort((a, b) => {
     return new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -27,6 +30,19 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
   const photoA = sortedPhotos.find(p => p.id === photoAId);
   const photoB = sortedPhotos.find(p => p.id === photoBId);
 
+  const getCategoryLabel = (cat?: string) => {
+    switch (cat) {
+      case 'frente':
+        return language === 'en' ? 'Front' : language === 'es' ? 'Frente' : 'Frente';
+      case 'lado':
+        return language === 'en' ? 'Side' : language === 'es' ? 'Perfil' : 'Perfil';
+      case 'costas':
+        return language === 'en' ? 'Back' : language === 'es' ? 'Espalda' : 'Costas';
+      default:
+        return language === 'en' ? 'General' : language === 'es' ? 'General' : 'Geral';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col p-5 sm:p-6 shadow-2xl animate-in zoom-in-95">
@@ -37,10 +53,10 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-slate-100 text-base sm:text-lg">
-                Comparação Lado a Lado de Fotos
+                {language === 'en' ? 'Side-by-Side Photo Comparison' : language === 'es' ? 'Comparación Lado a Lado de Fotos' : 'Comparação Lado a Lado de Fotos'}
               </h3>
               <p className="text-xs text-slate-400">
-                Selecione dois momentos para visualizar sua transformação física.
+                {language === 'en' ? 'Select two moments to visualize your physical transformation.' : language === 'es' ? 'Selecciona dos momentos para ver tu transformación física.' : 'Selecione dois momentos para visualizar sua transformação física.'}
               </p>
             </div>
           </div>
@@ -57,7 +73,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 shrink-0">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Foto 1 (Referência / Antes)
+              {language === 'en' ? 'Photo 1 (Reference / Before)' : language === 'es' ? 'Foto 1 (Referencia / Antes)' : 'Foto 1 (Referência / Antes)'}
             </label>
             <select
               value={photoAId}
@@ -66,7 +82,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             >
               {sortedPhotos.map(p => (
                 <option key={p.id} value={p.id}>
-                  {formatDateBR(p.date)} - {(p.category || 'Geral').toUpperCase()} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
+                  {formatDateBR(p.date)} - {getCategoryLabel(p.category)} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
                 </option>
               ))}
             </select>
@@ -74,7 +90,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Foto 2 (Atual / Depois)
+              {language === 'en' ? 'Photo 2 (Current / After)' : language === 'es' ? 'Foto 2 (Actual / Después)' : 'Foto 2 (Atual / Depois)'}
             </label>
             <select
               value={photoBId}
@@ -83,7 +99,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             >
               {sortedPhotos.map(p => (
                 <option key={p.id} value={p.id}>
-                  {formatDateBR(p.date)} - {(p.category || 'Geral').toUpperCase()} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
+                  {formatDateBR(p.date)} - {getCategoryLabel(p.category)} {p.notes ? `(${p.notes.slice(0, 20)}...)` : ''}
                 </option>
               ))}
             </select>
@@ -99,25 +115,29 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
                 <span className="font-bold text-slate-200">
                   {photoA ? formatDateBR(photoA.date) : '-'}
                 </span>
-                <span className="capitalize text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  {photoA?.category || 'Geral'}
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  {photoA ? getCategoryLabel(photoA.category) : '-'}
                 </span>
               </div>
-              <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-900 aspect-[3/4] flex items-center justify-center">
-                {photoA ? (
+
+              {photoA ? (
+                <div className="aspect-[3/4] bg-slate-950 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
                   <img
                     src={photoA.photoDataUrl}
-                    alt={`Foto de ${photoA.date}`}
+                    alt="Photo A"
                     className="w-full h-full object-contain"
                   />
-                ) : (
-                  <span className="text-xs text-slate-500">Nenhuma foto selecionada</span>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="aspect-[3/4] flex items-center justify-center text-slate-600 text-xs">
+                  {language === 'en' ? 'No photo selected' : language === 'es' ? 'Sin foto seleccionada' : 'Nenhuma foto selecionada'}
+                </div>
+              )}
             </div>
+
             {photoA?.notes && (
-              <p className="text-xs text-slate-400 mt-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800/80">
-                {photoA.notes}
+              <p className="text-xs text-slate-400 mt-2 p-2 bg-slate-900/80 rounded-lg italic">
+                “{photoA.notes}”
               </p>
             )}
           </div>
@@ -129,25 +149,29 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
                 <span className="font-bold text-slate-200">
                   {photoB ? formatDateBR(photoB.date) : '-'}
                 </span>
-                <span className="capitalize text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                  {photoB?.category || 'Geral'}
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  {photoB ? getCategoryLabel(photoB.category) : '-'}
                 </span>
               </div>
-              <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-900 aspect-[3/4] flex items-center justify-center">
-                {photoB ? (
+
+              {photoB ? (
+                <div className="aspect-[3/4] bg-slate-950 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
                   <img
                     src={photoB.photoDataUrl}
-                    alt={`Foto de ${photoB.date}`}
+                    alt="Photo B"
                     className="w-full h-full object-contain"
                   />
-                ) : (
-                  <span className="text-xs text-slate-500">Nenhuma foto selecionada</span>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="aspect-[3/4] flex items-center justify-center text-slate-600 text-xs">
+                  {language === 'en' ? 'No photo selected' : language === 'es' ? 'Sin foto seleccionada' : 'Nenhuma foto selecionada'}
+                </div>
+              )}
             </div>
+
             {photoB?.notes && (
-              <p className="text-xs text-slate-400 mt-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800/80">
-                {photoB.notes}
+              <p className="text-xs text-slate-400 mt-2 p-2 bg-slate-900/80 rounded-lg italic">
+                “{photoB.notes}”
               </p>
             )}
           </div>
@@ -159,7 +183,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-colors"
           >
-            Fechar Comparação
+            {t.common.close}
           </button>
         </div>
       </div>

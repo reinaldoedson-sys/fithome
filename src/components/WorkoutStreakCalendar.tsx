@@ -282,7 +282,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
                 {day.hasWorkout ? (
                   <div className="mt-1">
                     <span className="text-[10px] sm:text-xs font-bold text-emerald-300 block truncate">
-                      {day.sessions.length === 1 ? day.sessions[0].title : `${day.sessions.length} ${language === 'en' ? 'workouts' : 'treinos'}`}
+                      {day.sessions.length === 1 ? day.sessions[0].title : `${day.sessions.length} ${language === 'en' ? 'workouts' : language === 'es' ? 'entrenamientos' : 'treinos'}`}
                     </span>
                     <span className="hidden sm:block text-[10px] text-slate-400 tabular-nums">
                       {Math.round(day.totalDurationSeconds / 60)} min

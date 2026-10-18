@@ -49,20 +49,20 @@ export interface ProgressPhoto {
   createdAt: string;
 }
 
-export const MEASUREMENT_LABELS: Record<MeasurementKey, { name: string; short: string }> = {
-  cintura: { name: 'Cintura', short: 'Cintura' },
-  abdomen: { name: 'Abdômen', short: 'Abdômen' },
-  peito: { name: 'Peito / Tórax', short: 'Peito' },
-  quadril: { name: 'Quadril', short: 'Quadril' },
-  pescoco: { name: 'Pescoço', short: 'Pescoço' },
-  bracoEsquerdo: { name: 'Braço Esquerdo', short: 'Braço Esq.' },
-  bracoDireito: { name: 'Braço Direito', short: 'Braço Dir.' },
-  antebracoEsquerdo: { name: 'Antebraço Esquerdo', short: 'Anteb. Esq.' },
-  antebracoDireito: { name: 'Antebraço Direito', short: 'Anteb. Dir.' },
-  coxaEsquerda: { name: 'Coxa Esquerda', short: 'Coxa Esq.' },
-  coxaDireita: { name: 'Coxa Direita', short: 'Coxa Dir.' },
-  panturrilhaEsquerda: { name: 'Panturrilha Esquerda', short: 'Panturr. Esq.' },
-  panturrilhaDireita: { name: 'Panturrilha Direita', short: 'Panturr. Dir.' }
+export const MEASUREMENT_LABELS: Record<MeasurementKey, { name: string; short: string; en: string; es: string }> = {
+  cintura: { name: 'Cintura', short: 'Cintura', en: 'Waist', es: 'Cintura' },
+  abdomen: { name: 'Abdômen', short: 'Abdômen', en: 'Abdomen', es: 'Abdomen' },
+  peito: { name: 'Peito / Tórax', short: 'Peito', en: 'Chest', es: 'Pecho / Tórax' },
+  quadril: { name: 'Quadril', short: 'Quadril', en: 'Hips', es: 'Caderas' },
+  pescoco: { name: 'Pescoço', short: 'Pescoço', en: 'Neck', es: 'Cuello' },
+  bracoEsquerdo: { name: 'Braço Esquerdo', short: 'Braço Esq.', en: 'Left Arm', es: 'Brazo Izq.' },
+  bracoDireito: { name: 'Braço Direito', short: 'Braço Dir.', en: 'Right Arm', es: 'Brazo Der.' },
+  antebracoEsquerdo: { name: 'Antebraço Esquerdo', short: 'Anteb. Esq.', en: 'Left Forearm', es: 'Antebrazo Izq.' },
+  antebracoDireito: { name: 'Antebraço Direito', short: 'Anteb. Dir.', en: 'Right Forearm', es: 'Antebrazo Der.' },
+  coxaEsquerda: { name: 'Coxa Esquerda', short: 'Coxa Esq.', en: 'Left Thigh', es: 'Muslo Izq.' },
+  coxaDireita: { name: 'Coxa Direita', short: 'Coxa Dir.', en: 'Right Thigh', es: 'Muslo Der.' },
+  panturrilhaEsquerda: { name: 'Panturrilha Esquerda', short: 'Panturr. Esq.', en: 'Left Calf', es: 'Pantorrilla Izq.' },
+  panturrilhaDireita: { name: 'Panturrilha Direita', short: 'Panturr. Dir.', en: 'Right Calf', es: 'Pantorrilla Der.' }
 };
 
 // --- IMC (Índice de Massa Corporal) ---

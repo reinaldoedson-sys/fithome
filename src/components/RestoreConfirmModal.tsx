@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FitHomeBackup } from '../utils/backupValidator';
 import { RestoreMode } from '../services/backupRestoreService';
+import { useLanguage } from '../i18n/LanguageContext';
 import {
   AlertTriangle,
   X,
@@ -30,6 +31,7 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
   onClose,
   isRestoring = false
 }) => {
+  const { language, t } = useLanguage();
   const [selectedMode, setSelectedMode] = useState<RestoreMode>('merge');
 
   const sessionsCount = backup.sessions?.length || 0;
@@ -54,8 +56,8 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Restaurar Backup</h3>
-              <p className="text-xs text-slate-400">Escolha o modo de restauração dos seus dados</p>
+              <h3 className="text-lg font-bold text-white">{t.backup.restoreTitle}</h3>
+              <p className="text-xs text-slate-400">{t.backup.restoreSubtitle}</p>
             </div>
           </div>
           <button
@@ -73,7 +75,7 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
           {/* Mode Selection */}
           <div className="space-y-2.5">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Modo de Restauração:
+              {language === 'en' ? 'Restore Mode:' : language === 'es' ? 'Modo de Restauración:' : 'Modo de Restauração:'}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Option 1: Merge */}
@@ -91,14 +93,11 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       <Layers className={`w-4 h-4 ${selectedMode === 'merge' ? 'text-emerald-400' : 'text-slate-400'}`} />
-                      <span className="font-bold text-sm text-white">Mesclar Dados</span>
+                      <span className="font-bold text-sm text-white">{t.backup.mergeOption}</span>
                     </div>
-                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Recomendado
-                    </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Preserva registros atuais. Adiciona itens novos do backup e atualiza os que tiverem o mesmo identificador sem apagar nada.
+                    {t.backup.mergeDesc}
                   </p>
                 </div>
               </button>
@@ -118,33 +117,34 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       <RefreshCw className={`w-4 h-4 ${selectedMode === 'replace' ? 'text-amber-400' : 'text-slate-400'}`} />
-                      <span className="font-bold text-sm text-white">Substituir Dados</span>
+                      <span className="font-bold text-sm text-white">{t.backup.replaceOption}</span>
                     </div>
-                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      Integral
-                    </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Faz com que os dados correspondam exatamente ao backup nas categorias incluídas. Registros excedentes na nuvem e locais são removidos.
+                    {t.backup.replaceDesc}
                   </p>
                 </div>
               </button>
             </div>
           </div>
 
-          {/* Warning banner for Replace Mode */}
+          {/* Warning banner */}
           {selectedMode === 'replace' ? (
             <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-200 flex items-start gap-2.5 leading-relaxed">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <strong>Atenção:</strong> Treinos, pesagens, medidas e recordes existentes que não estiverem presentes no arquivo serão excluídos permanentemente para manter a paridade com o arquivo restaurado.
+                {t.backup.replaceWarning}
               </div>
             </div>
           ) : (
             <div className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-xl text-xs text-slate-300 flex items-start gap-2.5 leading-relaxed">
               <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <strong>Resolução de Conflitos:</strong> Registros já cadastrados que coincidirem em identificador serão atualizados com as informações do backup. Nenhum treino ou medida não listado no backup será apagado.
+                {language === 'en'
+                  ? 'Existing records with matching IDs will be safely merged and updated. No workout or measurement will be lost.'
+                  : language === 'es'
+                  ? 'Los registros existentes con identificadores coincidentes se actualizarán de forma segura. No se perderá ningún dato.'
+                  : 'Registros já cadastrados que coincidirem em identificador serão atualizados com as informações do backup. Nenhum treino ou medida não listado no backup será apagado.'}
               </div>
             </div>
           )}
@@ -152,54 +152,54 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
           {/* Backup Summary Box */}
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Registros Encontrados no Arquivo:
+              {language === 'en' ? 'Records Found in Backup:' : language === 'es' ? 'Registros Encontrados en el Archivo:' : 'Registros Encontrados no Arquivo:'}
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Dumbbell className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Treinos</div>
-                  <div className="font-semibold text-white">{sessionsCount} registros</div>
+                  <div className="text-slate-400">{t.progress.workoutsLabel}</div>
+                  <div className="font-semibold text-white">{sessionsCount}</div>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Scale className="w-4 h-4 text-blue-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Pesagens</div>
-                  <div className="font-semibold text-white">{weightsCount} registros</div>
+                  <div className="text-slate-400">{t.common.weight}</div>
+                  <div className="font-semibold text-white">{weightsCount}</div>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Ruler className="w-4 h-4 text-purple-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Medidas</div>
-                  <div className="font-semibold text-white">{measuresCount} registros</div>
+                  <div className="text-slate-400">{language === 'en' ? 'Measurements' : language === 'es' ? 'Medidas' : 'Medidas'}</div>
+                  <div className="font-semibold text-white">{measuresCount}</div>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Recordes (PRs)</div>
-                  <div className="font-semibold text-white">{prsCount} registros</div>
+                  <div className="text-slate-400">{t.progress.prsTitle}</div>
+                  <div className="font-semibold text-white">{prsCount}</div>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Calendar className="w-4 h-4 text-teal-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Meta Corporal</div>
-                  <div className="font-semibold text-white">{hasGoal ? 'Configurada' : 'Nenhuma'}</div>
+                  <div className="text-slate-400">{t.common.goal}</div>
+                  <div className="font-semibold text-white">{hasGoal ? (language === 'en' ? 'Configured' : language === 'es' ? 'Configurada' : 'Configurada') : t.common.none}</div>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2.5">
                 <Camera className="w-4 h-4 text-pink-400 shrink-0" />
                 <div>
-                  <div className="text-slate-400">Fotos</div>
-                  <div className="font-semibold text-white">{photosCount} fotos</div>
+                  <div className="text-slate-400">{t.evolution.photo}</div>
+                  <div className="font-semibold text-white">{photosCount}</div>
                 </div>
               </div>
             </div>
@@ -214,7 +214,7 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
             disabled={isRestoring}
             className="px-4 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-medium transition-colors"
           >
-            Cancelar
+            {t.common.cancel}
           </button>
           <button
             type="button"
@@ -229,17 +229,17 @@ export const RestoreConfirmModal: React.FC<RestoreConfirmModalProps> = ({
             {isRestoring ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Restaurando...</span>
+                <span>{t.common.loading}</span>
               </>
             ) : selectedMode === 'replace' ? (
               <>
                 <RefreshCw className="w-4 h-4" />
-                <span>Substituir e Restaurar</span>
+                <span>{language === 'en' ? 'Replace & Restore' : language === 'es' ? 'Reemplazar y Restaurar' : 'Substituir e Restaurar'}</span>
               </>
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                <span>Mesclar e Restaurar</span>
+                <span>{language === 'en' ? 'Merge & Restore' : language === 'es' ? 'Combinar y Restaurar' : 'Mesclar e Restaurar'}</span>
               </>
             )}
           </button>

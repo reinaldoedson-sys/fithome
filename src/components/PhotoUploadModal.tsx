@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { ProgressPhoto } from '../types/bodyEvolution';
 import { getTodayDateString } from '../utils/bodyDateUtils';
+import { useLanguage } from '../i18n/LanguageContext';
 import { X, Camera, Upload, AlertCircle, Info } from 'lucide-react';
 
 interface PhotoUploadModalProps {
@@ -12,6 +13,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
   onSave,
   onClose
 }) => {
+  const { language, t } = useLanguage();
   const [date, setDate] = useState(() => getTodayDateString());
   const [category, setCategory] = useState<'frente' | 'costas' | 'lado' | 'outro'>('frente');
   const [notes, setNotes] = useState('');
@@ -66,7 +68,13 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setError('Por favor, selecione um arquivo de imagem válido (JPG, PNG ou WebP).');
+      setError(
+        language === 'en'
+          ? 'Please select a valid image file (JPG, PNG or WebP).'
+          : language === 'es'
+          ? 'Por favor, selecciona un archivo de imagen válido (JPG, PNG o WebP).'
+          : 'Por favor, selecione um arquivo de imagem válido (JPG, PNG ou WebP).'
+      );
       return;
     }
 
@@ -76,7 +84,13 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       const compressedDataUrl = await compressImage(file);
       setPreviewUrl(compressedDataUrl);
     } catch {
-      setError('Erro ao processar imagem. Tente uma foto diferente.');
+      setError(
+        language === 'en'
+          ? 'Error processing image. Please try a different photo.'
+          : language === 'es'
+          ? 'Error al procesar la imagen. Intenta con otra foto.'
+          : 'Erro ao processar imagem. Tente uma foto diferente.'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -85,11 +99,23 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!previewUrl) {
-      setError('Por favor, selecione uma foto para salvar.');
+      setError(
+        language === 'en'
+          ? 'Please select a photo to save.'
+          : language === 'es'
+          ? 'Por favor, selecciona una foto para guardar.'
+          : 'Por favor, selecione uma foto para salvar.'
+      );
       return;
     }
     if (!date) {
-      setError('Por favor, selecione a data da foto.');
+      setError(
+        language === 'en'
+          ? 'Please select the photo date.'
+          : language === 'es'
+          ? 'Por favor, selecciona la fecha de la foto.'
+          : 'Por favor, selecione a data da foto.'
+      );
       return;
     }
 
@@ -102,9 +128,21 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       });
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'QuotaExceededError') {
-        setError('Limite de armazenamento local do navegador atingido. Exclua fotos antigas antes de salvar novas.');
+        setError(
+          language === 'en'
+            ? 'Browser local storage limit reached. Delete older photos before saving new ones.'
+            : language === 'es'
+            ? 'Límite de almacenamiento del navegador alcanzado. Elimina fotos antiguas antes de guardar nuevas.'
+            : 'Limite de armazenamento local do navegador atingido. Exclua fotos antigas antes de salvar novas.'
+        );
       } else {
-        setError('Não foi possível salvar a foto.');
+        setError(
+          language === 'en'
+            ? 'Could not save photo.'
+            : language === 'es'
+            ? 'No se pudo guardar la foto.'
+            : 'Não foi possível salvar a foto.'
+        );
       }
     }
   };
@@ -118,7 +156,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               <Camera className="w-4 h-4" />
             </div>
             <h3 className="font-bold text-slate-100 text-base sm:text-lg">
-              Adicionar Foto de Evolução
+              {language === 'en' ? 'Add Evolution Photo' : language === 'es' ? 'Añadir Foto de Evolución' : 'Adicionar Foto de Evolução'}
             </h3>
           </div>
           <button
@@ -141,10 +179,10 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-slate-300">
-                Foto Corporal
+                {language === 'en' ? 'Body Photo' : language === 'es' ? 'Foto Corporal' : 'Foto Corporal'}
               </label>
               <span className="text-[10px] text-emerald-400 flex items-center gap-1">
-                <Info className="w-3 h-3" /> Privada no seu navegador
+                <Info className="w-3 h-3" /> {language === 'en' ? 'Private in your browser' : language === 'es' ? 'Privada en tu navegador' : 'Privada no seu navegador'}
               </span>
             </div>
 
@@ -152,7 +190,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950 aspect-[3/4] max-h-72 mx-auto flex items-center justify-center">
                 <img
                   src={previewUrl}
-                  alt="Pré-visualização da evolução"
+                  alt="Preview"
                   className="w-full h-full object-contain"
                 />
                 <button
@@ -162,7 +200,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                   className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-slate-900 text-slate-200 rounded-lg border border-slate-700 transition-colors"
-                  title="Trocar imagem"
+                  title={language === 'en' ? 'Change image' : language === 'es' ? 'Cambiar imagen' : 'Trocar imagem'}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -174,10 +212,12 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               >
                 <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
                 <p className="text-xs font-semibold text-slate-300">
-                  {isProcessing ? 'Otimizando imagem...' : 'Clique para selecionar uma foto'}
+                  {isProcessing
+                    ? (language === 'en' ? 'Optimizing image...' : language === 'es' ? 'Optimizando imagen...' : 'Otimizando imagem...')
+                    : (language === 'en' ? 'Click to select a photo' : language === 'es' ? 'Haz clic para seleccionar una foto' : 'Clique para selecionar uma foto')}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  JPG, PNG ou WebP (compressão inteligente local)
+                  {language === 'en' ? 'JPG, PNG or WebP (local smart compression)' : language === 'es' ? 'JPG, PNG o WebP (compresión inteligente local)' : 'JPG, PNG ou WebP (compressão inteligente local)'}
                 </p>
               </div>
             )}
@@ -194,7 +234,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Data da Foto
+                {language === 'en' ? 'Photo Date' : language === 'es' ? 'Fecha de la Foto' : 'Data da Foto'}
               </label>
               <input
                 type="date"
@@ -208,28 +248,28 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Ângulo / Posição
+                {language === 'en' ? 'Angle / Pose' : language === 'es' ? 'Ángulo / Pose' : 'Ângulo / Posição'}
               </label>
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value as 'frente' | 'costas' | 'lado' | 'outro')}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 capitalize"
               >
-                <option value="frente">Frente</option>
-                <option value="lado">Perfil / Lado</option>
-                <option value="costas">Costas</option>
-                <option value="outro">Outro</option>
+                <option value="frente">{language === 'en' ? 'Front' : language === 'es' ? 'Frente' : 'Frente'}</option>
+                <option value="lado">{language === 'en' ? 'Side / Profile' : language === 'es' ? 'Perfil / Lado' : 'Perfil / Lado'}</option>
+                <option value="costas">{language === 'en' ? 'Back' : language === 'es' ? 'Espalda' : 'Costas'}</option>
+                <option value="outro">{language === 'en' ? 'Other' : language === 'es' ? 'Otro' : 'Outro'}</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Observações <span className="text-slate-500 font-normal">(Opcional)</span>
+              {language === 'en' ? 'Notes (Optional)' : language === 'es' ? 'Notas (Opcional)' : 'Observações (Opcional)'}
             </label>
             <textarea
               rows={2}
-              placeholder="Ex: Iluminação matinal, pós-treino de pernas..."
+              placeholder={language === 'en' ? 'Ex: Morning light, post workout...' : language === 'es' ? 'Ej: Luz matutina, post entreno...' : 'Ex: Iluminação matinal, pós-treino de pernas...'}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -242,14 +282,14 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
             >
-              Cancelar
+              {t.common.cancel}
             </button>
             <button
               type="submit"
               disabled={!previewUrl || isProcessing}
               className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
             >
-              Salvar Foto
+              {language === 'en' ? 'Save Photo' : language === 'es' ? 'Guardar Foto' : 'Salvar Foto'}
             </button>
           </div>
         </form>
