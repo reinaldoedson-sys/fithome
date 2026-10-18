@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RestTimer } from './RestTimer';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ActiveWorkoutModalProps {
   initialTitle?: string;
@@ -29,13 +30,15 @@ interface ActiveWorkoutModalProps {
 }
 
 export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
-  initialTitle = 'Treino em Casa',
+  initialTitle,
   initialExercises = [],
   previousRecords,
   onSaveWorkout,
   onClose
 }) => {
-  const [title, setTitle] = useState(initialTitle);
+  const { language, t } = useLanguage();
+  const defaultTitle = language === 'en' ? 'Home Workout' : language === 'es' ? 'Entrenamiento en Casa' : 'Treino em Casa';
+  const [title, setTitle] = useState(initialTitle || defaultTitle);
   const [startTime] = useState<string>(() => new Date().toISOString());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [notes, setNotes] = useState('');
@@ -324,10 +327,10 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
   };
 
   const setTypeLabels: Record<SetType, { label: string; badge: string }> = {
-    normal: { label: 'Normal', badge: 'bg-slate-800 text-slate-300' },
-    warmup: { label: 'Aquec.', badge: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' },
-    dropset: { label: 'Drop', badge: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' },
-    failure: { label: 'Falha', badge: 'bg-rose-500/20 text-rose-400 border border-rose-500/30' }
+    normal: { label: t.workoutActive.normal, badge: 'bg-slate-800 text-slate-300' },
+    warmup: { label: t.workoutActive.warmup, badge: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' },
+    dropset: { label: t.workoutActive.dropset, badge: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' },
+    failure: { label: t.workoutActive.failure, badge: 'bg-rose-500/20 text-rose-400 border border-rose-500/30' }
   };
 
   const filteredExercisesForModal = EXERCISES.filter(ex =>
@@ -345,7 +348,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             type="button"
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-800 transition-colors"
-            title="Sair do treino"
+            title={t.common.close}
           >
             <X className="w-5 h-5" />
           </button>
@@ -355,7 +358,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
               value={title}
               onChange={e => setTitle(e.target.value)}
               className="bg-transparent text-slate-100 font-bold text-base sm:text-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 rounded px-1 -ml-1 border-b border-transparent hover:border-slate-700 transition-colors"
-              placeholder="Nome do treino..."
+              placeholder={defaultTitle}
             />
             <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
               <span className="flex items-center gap-1 text-emerald-400 font-medium">
@@ -364,10 +367,10 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
               </span>
               <span>·</span>
               <span>
-                <strong className="text-slate-200 tabular-nums">{completedSetsCount}</strong> séries feitas
+                <strong className="text-slate-200 tabular-nums">{completedSetsCount}</strong> {t.streak.seriesCount(completedSetsCount)}
               </span>
               <span>·</span>
-              <span className="text-emerald-400 font-medium">Treino em Casa</span>
+              <span className="text-emerald-400 font-medium">{defaultTitle}</span>
             </div>
           </div>
         </div>
@@ -379,7 +382,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap"
           >
             <Check className="w-4 h-4 stroke-[2.5]" />
-            <span>Concluir Treino</span>
+            <span>{t.workoutActive.finish}</span>
           </button>
         </div>
       </header>
@@ -389,15 +392,19 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
         {workoutExercises.length === 0 ? (
           <div className="text-center py-16 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 p-8">
             <Dumbbell className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-slate-200 mb-1">Seu treino em casa está vazio</h3>
-            <p className="text-sm text-slate-400 mb-4">Adicione o primeiro exercício para começar a treinar.</p>
+            <h3 className="text-lg font-semibold text-slate-200 mb-1">
+              {language === 'en' ? 'Your workout is empty' : language === 'es' ? 'Tu entrenamiento está vacío' : 'Seu treino em casa está vazio'}
+            </h3>
+            <p className="text-sm text-slate-400 mb-4">
+              {language === 'en' ? 'Add the first exercise to start training.' : language === 'es' ? 'Añade el primer ejercicio para empezar a entrenar.' : 'Adicione o primeiro exercício para começar a treinar.'}
+            </p>
             <button
               type="button"
               onClick={() => setShowAddExerciseModal(true)}
               className="px-4 py-2.5 bg-emerald-500 text-slate-950 font-bold rounded-xl text-sm hover:bg-emerald-400 transition-colors inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Adicionar Exercício</span>
+              <span>{t.workoutActive.addExercise}</span>
             </button>
           </div>
         ) : (
@@ -406,6 +413,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
               const exerciseMeta = EXERCISES.find(e => e.id === we.exerciseId);
               const pr = previousRecords.find(p => p.exerciseId === we.exerciseId);
               const isSeconds = exerciseMeta?.measurementType === 'seconds';
+              const displayName = language === 'en' ? (exerciseMeta?.name || we.exerciseId) : (exerciseMeta?.namePt || we.exerciseId);
 
               return (
                 <div
@@ -417,25 +425,27 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base sm:text-lg font-bold text-slate-100">
-                          {exerciseMeta?.namePt || we.exerciseId}
+                          {displayName}
                         </h3>
                         {exerciseMeta && (
                           <span className="text-xs text-emerald-400 font-medium">
-                            {MUSCLE_LABELS[exerciseMeta.primaryMuscle].pt}
+                            {MUSCLE_LABELS[exerciseMeta.primaryMuscle][language] || MUSCLE_LABELS[exerciseMeta.primaryMuscle].pt}
                           </span>
                         )}
                         {pr && (
                           <span className="flex items-center gap-1 text-[11px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
                             <Trophy className="w-3 h-3" />
-                            Recorde: {pr.maxScore} {pr.metricLabel}
+                            {language === 'en' ? 'Record: ' : language === 'es' ? 'Récord: ' : 'Recorde: '} {pr.maxScore} {pr.metricLabel}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 flex-wrap">
-                        <span>{exerciseMeta ? HOME_EQUIPMENT_LABELS[exerciseMeta.equipment].pt : ''}</span>
+                        <span>{exerciseMeta ? (HOME_EQUIPMENT_LABELS[exerciseMeta.equipment][language] || HOME_EQUIPMENT_LABELS[exerciseMeta.equipment].pt) : ''}</span>
                         <span>·</span>
                         <span className="text-emerald-400/90 font-medium">
-                          {isSeconds ? 'Medido em Segundos (Isometria)' : 'Medido em Repetições'}
+                          {isSeconds
+                            ? (language === 'en' ? 'Measured in Seconds (Isometrics)' : language === 'es' ? 'Medido en Segundos (Isometría)' : 'Medido em Segundos (Isometria)')
+                            : (language === 'en' ? 'Measured in Repetitions' : language === 'es' ? 'Medido en Repeticiones' : 'Medido em Repetições')}
                         </span>
                       </div>
                     </div>
@@ -444,7 +454,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                       type="button"
                       onClick={() => handleRemoveExercise(exIdx)}
                       className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800/80 transition-colors"
-                      title="Remover exercício"
+                      title={t.common.delete}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -463,12 +473,12 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     <table className="w-full text-left text-xs sm:text-sm">
                       <thead>
                         <tr className="text-slate-400 border-b border-slate-800 text-[11px] uppercase tracking-wider">
-                          <th className="py-2 px-1 text-center w-10">Série</th>
-                          <th className="py-2 px-2 text-center w-24">Tipo</th>
+                          <th className="py-2 px-1 text-center w-10">{t.workoutActive.set}</th>
+                          <th className="py-2 px-2 text-center w-24">{language === 'en' ? 'Type' : 'Tipo'}</th>
                           <th className="py-2 px-2 text-center w-28">
-                            {isSeconds ? 'Tempo (seg)' : 'Repetições'}
+                            {isSeconds ? (language === 'en' ? 'Time (sec)' : language === 'es' ? 'Tiempo (seg)' : 'Tempo (seg)') : t.common.reps}
                           </th>
-                          <th className="py-2 px-2 text-center w-24">Carga Extra (kg)</th>
+                          <th className="py-2 px-2 text-center w-24">{t.workoutActive.weightKg}</th>
                           <th className="py-2 px-2 text-center w-12">✓</th>
                           <th className="py-2 px-1 text-right w-8"></th>
                         </tr>

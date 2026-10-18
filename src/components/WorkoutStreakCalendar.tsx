@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { WorkoutSession } from '../types/workout';
 import { generateMonthCalendar, DayWorkoutSummary } from '../utils/streakUtils';
+import { useLanguage } from '../i18n/LanguageContext';
 import {
   Calendar as CalendarIcon,
   Flame,
@@ -19,31 +20,39 @@ interface WorkoutStreakCalendarProps {
   onStartWorkout?: () => void;
 }
 
-const MONTH_NAMES = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro'
-];
+const LOCALIZED_MONTHS: Record<'pt' | 'en' | 'es', string[]> = {
+  pt: [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ],
+  en: [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ],
+  es: [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ]
+};
 
-const WEEKDAY_NAMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const LOCALIZED_WEEKDAYS: Record<'pt' | 'en' | 'es', string[]> = {
+  pt: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+  en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  es: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+};
 
 export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
   sessions,
   onStartWorkout
 }) => {
+  const { language, t } = useLanguage();
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<DayWorkoutSummary | null>(null);
+
+  const monthNames = LOCALIZED_MONTHS[language] || LOCALIZED_MONTHS.pt;
+  const weekdayNames = LOCALIZED_WEEKDAYS[language] || LOCALIZED_WEEKDAYS.pt;
 
   const { days, stats } = generateMonthCalendar(
     currentYear,
@@ -78,6 +87,8 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
     setSelectedDay(null);
   };
 
+  const localeCode = language === 'pt' ? 'pt-BR' : language === 'es' ? 'es-ES' : 'en-US';
+
   return (
     <div className="space-y-6">
       {/* Gamification Cards: Streak & Monthly Metrics */}
@@ -86,7 +97,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
         <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/30 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-              Sequência Ativa
+              {t.streak.activeStreak}
             </span>
             <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
               <Flame className="w-4 h-4 fill-current animate-pulse" />
@@ -97,11 +108,13 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
               {stats.currentStreak}
             </span>
             <span className="text-xs text-slate-400">
-              {stats.currentStreak === 1 ? 'dia consecutivo' : 'dias consecutivos'}
+              {stats.currentStreak === 1 ? t.common.day : t.common.days}
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            {stats.currentStreak > 0 ? 'Mantenha o fogo aceso!' : 'Treine hoje para acender sua sequência!'}
+            {stats.currentStreak > 0
+              ? `${stats.currentStreak} ${t.streak.daysInRow}!`
+              : (language === 'en' ? 'Workout today to start your streak!' : language === 'es' ? '¡Entrena hoy para encender tu racha!' : 'Treine hoje para acender sua sequência!')}
           </p>
         </div>
 
@@ -109,7 +122,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
         <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Maior Sequência
+              {t.streak.longestStreak}
             </span>
             <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
               <Trophy className="w-4 h-4" />
@@ -119,16 +132,20 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
             <span className="text-2xl sm:text-3xl font-extrabold text-white font-display tabular-nums">
               {stats.longestStreak}
             </span>
-            <span className="text-xs text-slate-400">dias recorde</span>
+            <span className="text-xs text-slate-400">
+              {stats.longestStreak === 1 ? t.common.day : t.common.days}
+            </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Sua maior consistência histórica.</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {language === 'en' ? 'Your all-time consistency record.' : language === 'es' ? 'Tu mayor récord de constancia.' : 'Sua maior consistência histórica.'}
+          </p>
         </div>
 
         {/* Card 3: Monthly Workouts */}
         <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Treinos no Mês
+              {t.streak.workoutsThisMonth}
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
@@ -138,16 +155,20 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
             <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-display tabular-nums">
               {stats.totalWorkoutsMonth}
             </span>
-            <span className="text-xs text-slate-400">sessões feitas</span>
+            <span className="text-xs text-slate-400">
+              {t.streak.workoutOnDay(stats.totalWorkoutsMonth)}
+            </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Em {MONTH_NAMES[currentMonth]}.</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {monthNames[currentMonth]} {currentYear}
+          </p>
         </div>
 
         {/* Card 4: Monthly Volume & Minutes */}
         <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Tempo & Volume
+              {t.streak.totalTime}
             </span>
             <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center">
               <Clock className="w-4 h-4" />
@@ -157,10 +178,10 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
             <span className="text-2xl sm:text-3xl font-extrabold text-white font-display tabular-nums">
               {stats.totalMinutesMonth}
             </span>
-            <span className="text-xs text-slate-400">minutos</span>
+            <span className="text-xs text-slate-400">{t.common.minutes}</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            {stats.totalVolumeMonthKg > 0 ? `${stats.totalVolumeMonthKg} kg levantados` : 'Foco em peso corporal'}
+            {stats.totalVolumeMonthKg > 0 ? `${stats.totalVolumeMonthKg} kg` : (language === 'en' ? 'Bodyweight workouts' : language === 'es' ? 'Foco en peso corporal' : 'Foco em peso corporal')}
           </p>
         </div>
       </div>
@@ -175,15 +196,15 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <span>{MONTH_NAMES[currentMonth]} {currentYear}</span>
+                <span>{monthNames[currentMonth]} {currentYear}</span>
                 {currentMonth === today.getMonth() && currentYear === today.getFullYear() && (
                   <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Mês Atual
+                    {language === 'en' ? 'Current Month' : language === 'es' ? 'Mes Actual' : 'Mês Atual'}
                   </span>
                 )}
               </h3>
               <p className="text-xs text-slate-400">
-                Toque nos dias destacados para ver os treinos realizados
+                {language === 'en' ? 'Tap highlighted days to inspect completed workouts' : language === 'es' ? 'Toca los días resaltados para ver los entrenamientos realizados' : 'Toque nos dias destacados para ver os treinos realizados'}
               </p>
             </div>
           </div>
@@ -192,16 +213,16 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
             <button
               type="button"
               onClick={handleGoToday}
-              className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+              className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors font-medium"
             >
-              Hoje
+              {t.common.today}
             </button>
             <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1">
               <button
                 type="button"
                 onClick={handlePrevMonth}
                 className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-                title="Mês anterior"
+                title="Previous month"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -209,7 +230,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
                 type="button"
                 onClick={handleNextMonth}
                 className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-                title="Próximo mês"
+                title="Next month"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -219,7 +240,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
 
         {/* Weekday Labels Grid */}
         <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-xs font-semibold text-slate-400 py-1">
-          {WEEKDAY_NAMES.map(day => (
+          {weekdayNames.map(day => (
             <div key={day} className="uppercase tracking-wider text-[11px]">
               {day}
             </div>
@@ -261,7 +282,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
                 {day.hasWorkout ? (
                   <div className="mt-1">
                     <span className="text-[10px] sm:text-xs font-bold text-emerald-300 block truncate">
-                      {day.sessions.length === 1 ? day.sessions[0].title : `${day.sessions.length} treinos`}
+                      {day.sessions.length === 1 ? day.sessions[0].title : `${day.sessions.length} ${language === 'en' ? 'workouts' : 'treinos'}`}
                     </span>
                     <span className="hidden sm:block text-[10px] text-slate-400 tabular-nums">
                       {Math.round(day.totalDurationSeconds / 60)} min
@@ -282,7 +303,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <h4 className="font-bold text-sm text-white">
-                  Treinos realizados em {new Date(`${selectedDay.dateStr}T12:00:00`).toLocaleDateString('pt-BR', {
+                  {t.streak.inspectorTitle}: {new Date(`${selectedDay.dateStr}T12:00:00`).toLocaleDateString(localeCode, {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long'
@@ -293,6 +314,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
                 type="button"
                 onClick={() => setSelectedDay(null)}
                 className="text-slate-400 hover:text-white p-1 rounded-lg"
+                aria-label={t.common.close}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -308,11 +330,11 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
                     <div>
                       <h5 className="font-bold text-white text-sm">{s.title}</h5>
                       <span className="text-[11px] text-slate-400">
-                        {new Date(s.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(s.startTime).toLocaleTimeString(localeCode, { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                     <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold text-[10px]">
-                      Concluído
+                      {t.common.finish}
                     </span>
                   </div>
 
@@ -323,7 +345,7 @@ export const WorkoutStreakCalendar: React.FC<WorkoutStreakCalendarProps> = ({
                     </span>
                     <span className="flex items-center gap-1">
                       <Layers className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{s.totalSets} séries</span>
+                      <span>{t.streak.seriesCount(s.totalSets)}</span>
                     </span>
                     {s.totalVolumeKg > 0 && (
                       <span className="flex items-center gap-1">

@@ -103,22 +103,38 @@ export const playTimerBeep = (isFinished = false): void => {
   }
 };
 
-// Web SpeechSynthesis voice announcement
-export const speakVoiceAlert = (text: string): void => {
+// Web SpeechSynthesis voice announcement with multi-language support (pt, en, es)
+export const speakVoiceAlert = (text: string, langCode: 'pt' | 'en' | 'es' = 'pt'): void => {
   if (!isVoiceEnabled()) return;
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
   try {
     window.speechSynthesis.cancel(); // Stop any pending speech
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-BR';
+    
+    if (langCode === 'en') {
+      utterance.lang = 'en-US';
+    } else if (langCode === 'es') {
+      utterance.lang = 'es-ES';
+    } else {
+      utterance.lang = 'pt-BR';
+    }
+    
     utterance.rate = 1.05;
     utterance.pitch = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
-    const ptVoice = voices.find(v => v.lang.startsWith('pt') || v.lang.includes('BR'));
-    if (ptVoice) {
-      utterance.voice = ptVoice;
+    let matchingVoice;
+    if (langCode === 'en') {
+      matchingVoice = voices.find(v => v.lang.startsWith('en') || v.lang.includes('US'));
+    } else if (langCode === 'es') {
+      matchingVoice = voices.find(v => v.lang.startsWith('es'));
+    } else {
+      matchingVoice = voices.find(v => v.lang.startsWith('pt') || v.lang.includes('BR'));
+    }
+
+    if (matchingVoice) {
+      utterance.voice = matchingVoice;
     }
 
     window.speechSynthesis.speak(utterance);

@@ -1,29 +1,29 @@
 import { Exercise, MuscleGroup, HomeEquipment } from '../types/workout';
 
-export const MUSCLE_LABELS: Record<MuscleGroup, { pt: string; en: string }> = {
-  chest: { pt: 'Peitoral', en: 'Chest' },
-  lats: { pt: 'Costas & Dorsais', en: 'Lats' },
-  traps: { pt: 'Trapézio', en: 'Traps' },
-  shoulders: { pt: 'Ombros / Deltoides', en: 'Shoulders' },
-  biceps: { pt: 'Bíceps', en: 'Biceps' },
-  triceps: { pt: 'Tríceps', en: 'Triceps' },
-  forearms: { pt: 'Antebraço & Pegada', en: 'Forearms' },
-  abs: { pt: 'Abdômen & Core', en: 'Abs' },
-  quads: { pt: 'Quadríceps (Coxas)', en: 'Quads' },
-  hamstrings: { pt: 'Posterior de Coxa', en: 'Hamstrings' },
-  glutes: { pt: 'Glúteos', en: 'Glutes' },
-  calves: { pt: 'Panturrilhas', en: 'Calves' },
-  lower_back: { pt: 'Lombar & Postura', en: 'Lower Back' },
+export const MUSCLE_LABELS: Record<MuscleGroup, { pt: string; en: string; es: string }> = {
+  chest: { pt: 'Peitoral', en: 'Chest', es: 'Pectoral' },
+  lats: { pt: 'Costas & Dorsais', en: 'Lats', es: 'Dorsales / Espalda' },
+  traps: { pt: 'Trapézio', en: 'Traps', es: 'Trapecio' },
+  shoulders: { pt: 'Ombros / Deltoides', en: 'Shoulders', es: 'Hombros / Deltoides' },
+  biceps: { pt: 'Bíceps', en: 'Biceps', es: 'Bíceps' },
+  triceps: { pt: 'Tríceps', en: 'Triceps', es: 'Tríceps' },
+  forearms: { pt: 'Antebraço & Pegada', en: 'Forearms', es: 'Antebrazos' },
+  abs: { pt: 'Abdômen & Core', en: 'Abs', es: 'Abdomen & Core' },
+  quads: { pt: 'Quadríceps (Coxas)', en: 'Quads', es: 'Cuádriceps' },
+  hamstrings: { pt: 'Posterior de Coxa', en: 'Hamstrings', es: 'Isquiotibiales' },
+  glutes: { pt: 'Glúteos', en: 'Glutes', es: 'Glúteos' },
+  calves: { pt: 'Panturrilhas', en: 'Calves', es: 'Pantorrillas / Gemelos' },
+  lower_back: { pt: 'Lombar & Postura', en: 'Lower Back', es: 'Lumbar' },
 };
 
-export const HOME_EQUIPMENT_LABELS: Record<HomeEquipment, { pt: string; icon: string }> = {
-  bodyweight: { pt: 'Apenas Peso Corporal (Zero Equipamento)', icon: '🧍' },
-  chair: { pt: 'Cadeira / Sofá / Banco', icon: '🪑' },
-  backpack: { pt: 'Mochila com Carga / Garrafas', icon: '🎒' },
-  resistance_band: { pt: 'Faixa Elástica / Extensor', icon: '🟡' },
-  towel: { pt: 'Toalha de Banho', icon: '🧣' },
-  wall: { pt: 'Parede', icon: '🧱' },
-  dumbbell: { pt: 'Halteres Caseiros / Pesinhos', icon: '🏋️' },
+export const HOME_EQUIPMENT_LABELS: Record<HomeEquipment, { pt: string; en: string; es: string; icon: string }> = {
+  bodyweight: { pt: 'Apenas Peso Corporal (Zero Equipamento)', en: 'Bodyweight Only (Zero Equipment)', es: 'Solo Peso Corporal (Sin Equipo)', icon: '🧍' },
+  chair: { pt: 'Cadeira / Sofá / Banco', en: 'Chair / Sofa / Bench', es: 'Silla / Sofá / Banco', icon: '🪑' },
+  backpack: { pt: 'Mochila com Carga / Garrafas', en: 'Loaded Backpack / Bottles', es: 'Mochila con Peso / Botellas', icon: '🎒' },
+  resistance_band: { pt: 'Faixa Elástica / Extensor', en: 'Resistance Band / Loop', es: 'Banda Elástica / Extensor', icon: '🟡' },
+  towel: { pt: 'Toalha de Banho', en: 'Bath Towel', es: 'Toalla de Baño', icon: '🧣' },
+  wall: { pt: 'Parede', en: 'Wall', es: 'Pared', icon: '🧱' },
+  dumbbell: { pt: 'Halteres Caseiros / Pesinhos', en: 'Home Dumbbells / Weights', es: 'Mancuernas Caseras / Pesas', icon: '🏋️' },
 };
 
 export const EXERCISES: Exercise[] = [

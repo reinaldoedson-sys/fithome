@@ -3,6 +3,7 @@ import { RoutineTemplate } from '../types/workout';
 import { ROUTINE_TEMPLATES } from '../data/templates';
 import { EXERCISES, MUSCLE_LABELS, HOME_EQUIPMENT_LABELS } from '../data/exercises';
 import { CustomRoutineModal } from './CustomRoutineModal';
+import { useLanguage } from '../i18n/LanguageContext';
 import {
   Play,
   Dumbbell,
@@ -31,6 +32,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
   onSaveCustomRoutine,
   onDeleteCustomRoutine
 }) => {
+  const { language, t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'templates' | 'custom'>('templates');
   const [selectedTemplate, setSelectedTemplate] = useState<RoutineTemplate | null>(
     ROUTINE_TEMPLATES[0]
@@ -53,7 +55,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
 
   const handleDeleteRoutine = (routineId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Tem certeza de que deseja excluir esta rotina personalizada?')) {
+    if (confirm(t.routines.deleteConfirm)) {
       onDeleteCustomRoutine?.(routineId);
       if (selectedTemplate?.id === routineId) {
         setSelectedTemplate(customRoutines.find(r => r.id !== routineId) || null);
@@ -74,10 +76,10 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-display">
-            Planilhas & Rotinas para Treinar em Casa
+            {t.routines.title}
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Programas prontos e rotinas personalizadas com peso corporal, cadeira, toalha e mochila.
+            {t.routines.subtitle}
           </p>
         </div>
 
@@ -88,7 +90,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
             className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            <span>Criar Nova Rotina</span>
+            <span>{t.routines.createNew}</span>
           </button>
 
           <button
@@ -97,7 +99,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
             className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-xs sm:text-sm rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap"
           >
             <Dumbbell className="w-4 h-4 text-emerald-400" />
-            <span>Treino Livre</span>
+            <span>{t.common.newWorkout}</span>
           </button>
         </div>
       </div>
@@ -117,7 +119,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
           }`}
         >
           <Sparkles className="w-4 h-4" />
-          <span>Rotinas Prontas ({ROUTINE_TEMPLATES.length})</span>
+          <span>{t.routines.tabPresets} ({ROUTINE_TEMPLATES.length})</span>
         </button>
 
         <button
@@ -133,7 +135,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span>Minhas Rotinas Personalizadas ({customRoutines.length})</span>
+          <span>{t.routines.tabCustom} ({customRoutines.length})</span>
         </button>
       </div>
 
@@ -143,9 +145,9 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
           {displayedList.length === 0 ? (
             <div className="p-8 text-center bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 space-y-3">
               <Layers className="w-10 h-10 text-slate-600 mx-auto" />
-              <h4 className="font-semibold text-slate-300 text-sm">Nenhuma rotina personalizada ainda</h4>
+              <h4 className="font-semibold text-slate-300 text-sm">{language === 'en' ? 'No custom routines yet' : language === 'es' ? 'Sin rutinas personalizadas aún' : 'Nenhuma rotina personalizada ainda'}</h4>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                Crie seu primeiro plano customizado selecionando os exercícios caseiros de sua preferência.
+                {t.routines.emptyCustomDesc}
               </p>
               <button
                 type="button"
@@ -153,7 +155,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                 className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs inline-flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Criar Minha Primeira Rotina</span>
+                <span>{t.routines.createFirst}</span>
               </button>
             </div>
           ) : (
@@ -271,7 +273,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
               {/* Equipment Needed in Home */}
               <div className="mb-4">
                 <span className="text-xs font-semibold text-slate-400 block mb-2">
-                  O que você vai precisar em casa:
+                  {language === 'en' ? 'What you will need at home:' : language === 'es' ? 'Lo que necesitarás en casa:' : 'O que você vai precisar em casa:'}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedTemplate.equipmentNeeded.map(eq => (
@@ -280,7 +282,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                       className="text-xs font-medium text-slate-200 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1.5"
                     >
                       <span>{HOME_EQUIPMENT_LABELS[eq]?.icon || '🏠'}</span>
-                      <span>{HOME_EQUIPMENT_LABELS[eq]?.pt || eq}</span>
+                      <span>{HOME_EQUIPMENT_LABELS[eq]?.[language] || HOME_EQUIPMENT_LABELS[eq]?.pt || eq}</span>
                     </span>
                   ))}
                 </div>
@@ -289,7 +291,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
               {/* Muscles Targeted */}
               <div className="mb-4">
                 <span className="text-xs font-semibold text-slate-400 block mb-2">
-                  Músculos Trabalhados:
+                  {language === 'en' ? 'Target Muscles:' : language === 'es' ? 'Músculos Trabajados:' : 'Músculos Trabalhados:'}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedTemplate.targetMuscles.map(m => (
@@ -297,7 +299,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                       key={m}
                       className="text-xs font-medium text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20"
                     >
-                      {MUSCLE_LABELS[m]?.pt || m}
+                      {MUSCLE_LABELS[m]?.[language] || MUSCLE_LABELS[m]?.pt || m}
                     </span>
                   ))}
                 </div>
@@ -306,12 +308,17 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
               {/* Exercise Breakdown */}
               <div>
                 <span className="text-xs font-semibold text-slate-400 block mb-2">
-                  Sequência do Treino ({selectedTemplate.exercises.length} exercícios):
+                  {language === 'en'
+                    ? `Workout Sequence (${selectedTemplate.exercises.length} exercises):`
+                    : language === 'es'
+                    ? `Secuencia del Entrenamiento (${selectedTemplate.exercises.length} ejercicios):`
+                    : `Sequência do Treino (${selectedTemplate.exercises.length} exercícios):`}
                 </span>
                 <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
                   {selectedTemplate.exercises.map((item, idx) => {
                     const exMeta = EXERCISES.find(e => e.id === item.exerciseId);
                     const isSec = exMeta?.measurementType === 'seconds';
+                    const displayName = language === 'en' ? (exMeta?.name || exMeta?.namePt) : (exMeta?.namePt || exMeta?.name || item.exerciseId);
 
                     return (
                       <div
@@ -320,14 +327,14 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
                       >
                         <div>
                           <h4 className="font-semibold text-slate-200">
-                            {exMeta?.namePt || item.exerciseId}
+                            {displayName}
                           </h4>
                           <span className="text-[11px] text-slate-500">
-                            {exMeta ? HOME_EQUIPMENT_LABELS[exMeta.equipment]?.pt : ''}
+                            {exMeta ? (HOME_EQUIPMENT_LABELS[exMeta.equipment]?.[language] || HOME_EQUIPMENT_LABELS[exMeta.equipment]?.pt) : ''}
                           </span>
                         </div>
                         <span className="font-bold text-slate-300 tabular-nums">
-                          {item.defaultSets} séries × {item.defaultTarget}{isSec ? 's' : ' reps'}
+                          {item.defaultSets} {item.defaultSets === 1 ? 'série' : 'séries'} × {item.defaultTarget}{isSec ? 's' : ' reps'}
                         </span>
                       </div>
                     );
@@ -337,7 +344,7 @@ export const WorkoutRoutines: React.FC<WorkoutRoutinesProps> = ({
             </div>
           ) : (
             <div className="text-center py-12 text-slate-500">
-              Selecione uma rotina para ver os detalhes.
+              {language === 'en' ? 'Select a routine to view details.' : language === 'es' ? 'Selecciona una rutina para ver los detalles.' : 'Selecione uma rotina para ver os detalhes.'}
             </div>
           )}
         </div>

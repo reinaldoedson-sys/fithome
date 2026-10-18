@@ -9,6 +9,7 @@ import {
   isVoiceEnabled,
   setVoiceEnabled
 } from '../utils/audio';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface RestTimerProps {
   duration: number; // in seconds
@@ -27,6 +28,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
   onAdjustTime,
   onClose,
 }) => {
+  const { language, t } = useLanguage();
   const [soundOn, setSoundOn] = useState(() => isSoundEnabled());
   const [voiceOn, setVoiceOn] = useState(() => isVoiceEnabled());
 
@@ -54,7 +56,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
       playCountdownBeep(timeLeft);
     } else if (timeLeft === 0) {
       playTimerBeep(true);
-      speakVoiceAlert('Descanso finalizado! Hora de treinar!');
+      speakVoiceAlert(t.restTimer.voiceFinishMessage, language);
       if (typeof window !== 'undefined' && 'vibrate' in navigator) {
         try {
           navigator.vibrate([200, 100, 200, 100, 300]);
@@ -72,7 +74,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         <div className="flex items-center gap-2">
           <Bell className="w-4 h-4 text-emerald-400 animate-pulse" />
           <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-            Descanso entre Séries
+            {t.restTimer.title}
           </span>
         </div>
 
@@ -84,7 +86,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             className={`p-1 rounded-lg transition-colors ${
               soundOn ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-slate-500 hover:bg-slate-800'
             }`}
-            title={soundOn ? 'Desativar sons' : 'Ativar sons'}
+            title={soundOn ? t.restTimer.soundOff : t.restTimer.soundOn}
           >
             {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
@@ -96,7 +98,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             className={`p-1 rounded-lg transition-colors ${
               voiceOn ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-slate-500 hover:bg-slate-800'
             }`}
-            title={voiceOn ? 'Desativar voz sintetizada' : 'Ativar voz sintetizada'}
+            title={voiceOn ? t.restTimer.voiceOff : t.restTimer.voiceOn}
           >
             {voiceOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
           </button>
@@ -106,7 +108,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors ml-1"
-            aria-label="Fechar temporizador"
+            aria-label={t.common.close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -137,7 +139,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             type="button"
             onClick={() => onAdjustTime(-15)}
             className="p-2 text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-800 rounded-xl transition-colors text-xs font-semibold"
-            title="-15 segundos"
+            title="-15s"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
@@ -150,12 +152,12 @@ export const RestTimer: React.FC<RestTimerProps> = ({
             {isRunning ? (
               <>
                 <Pause className="w-3.5 h-3.5 fill-current" />
-                <span>Pausar</span>
+                <span>{t.restTimer.pause}</span>
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Retomar</span>
+                <span>{t.restTimer.resume}</span>
               </>
             )}
           </button>

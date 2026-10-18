@@ -66,6 +66,8 @@ import {
   hasCategoryMigrated,
   markCategoryMigrated
 } from './utils/migrationUtils';
+import { useLanguage } from './i18n/LanguageContext';
+import { LanguageSelector } from './components/LanguageSelector';
 
 // Helper to scope localStorage by user ID or 'guest'
 function getStorageKey(key: string, uid?: string | null): string {
@@ -84,6 +86,7 @@ function loadInitial<T>(key: string, fallback: T): T {
 }
 
 export default function App() {
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<
     'progresso' | 'evolucao' | 'exercicios' | 'rotinas' | 'historico'
   >('progresso');
@@ -720,7 +723,7 @@ export default function App() {
                   : ''
               }`}
             >
-              Progresso Semanal
+              {t.nav.progress}
             </button>
             <button
               type="button"
@@ -731,7 +734,7 @@ export default function App() {
                   : ''
               }`}
             >
-              Evolução Corporal
+              {t.nav.evolution}
             </button>
             <button
               type="button"
@@ -742,7 +745,7 @@ export default function App() {
                   : ''
               }`}
             >
-              Exercícios & Anatomia
+              {t.nav.exercises}
             </button>
             <button
               type="button"
@@ -753,7 +756,7 @@ export default function App() {
                   : ''
               }`}
             >
-              Rotinas de Casa
+              {t.nav.routines}
             </button>
             <button
               type="button"
@@ -764,12 +767,15 @@ export default function App() {
                   : ''
               }`}
             >
-              Histórico ({sessions.length})
+              {t.nav.historyCount(sessions.length)}
             </button>
           </nav>
 
-          {/* Zone 3: Cloud Sync + Primary CTA */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Zone 3: Language Selector + Cloud Sync + Primary CTA */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Language Selector */}
+            <LanguageSelector />
+
             {/* Firebase Auth / Cloud Status */}
             {isAuthLoading ? (
               <div className="p-2 text-slate-400">
@@ -797,13 +803,13 @@ export default function App() {
                   </span>
                   <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
                     <Cloud className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Nuvem Ativa</span>
+                    <span className="hidden sm:inline">{t.common.cloudActive}</span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  title="Desconectar do Firebase"
+                  title={t.common.disconnectCloud}
                   className="p-1 hover:text-rose-400 text-slate-500 rounded-md transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -817,8 +823,8 @@ export default function App() {
                 title="Sincronizar seus dados na nuvem com Firebase"
               >
                 <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Conectar Nuvem</span>
-                <span className="sm:hidden">Entrar</span>
+                <span className="hidden sm:inline">{t.common.connectCloud}</span>
+                <span className="sm:hidden">{t.common.start}</span>
               </button>
             )}
 
@@ -829,8 +835,8 @@ export default function App() {
               className="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">Iniciar Treino em Casa</span>
-              <span className="sm:hidden">Treinar</span>
+              <span className="hidden sm:inline">{t.common.startWorkout}</span>
+              <span className="sm:hidden">{t.common.start}</span>
             </button>
           </div>
         </div>
@@ -898,7 +904,7 @@ export default function App() {
           }`}
         >
           <Home className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">Progresso</span>
+          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.progress.split(' ')[0]}</span>
         </button>
 
         <button
@@ -909,7 +915,7 @@ export default function App() {
           }`}
         >
           <Scale className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">Evolução</span>
+          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.evolution.split(' ')[0]}</span>
         </button>
 
         <button
@@ -920,7 +926,7 @@ export default function App() {
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">Exercícios</span>
+          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.exercises.split(' ')[0]}</span>
         </button>
 
         <button
@@ -931,7 +937,7 @@ export default function App() {
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">Rotinas</span>
+          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.routines.split(' ')[0]}</span>
         </button>
 
         <button
@@ -942,7 +948,7 @@ export default function App() {
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">Histórico</span>
+          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.history}</span>
         </button>
       </div>
 

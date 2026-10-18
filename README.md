@@ -17,6 +17,7 @@ O sistema suporta tanto uso 100% offline (modo convidado com isolamento de dados
   - [5. Backup, Restauração e Integridade de Dados](#5-backup-restauração-e-integridade-de-dados)
   - [6. Progressive Web App (PWA) e Modo Offline](#6-progressive-web-app-pwa-e-modo-offline)
   - [7. Autenticação e Sincronização em Nuvem](#7-autenticação-e-sincronização-em-nuvem)
+  - [8. Suporte Multi-Idiomas (i18n: PT, EN, ES)](#8-suporte-multi-idiomas-i18n-pt-en-es)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Arquitetura e Estrutura de Pastas](#arquitetura-e-estrutura-de-pastas)
 - [Pré-requisitos](#pré-requisitos)
@@ -161,6 +162,23 @@ O **FitHome** foi projetado para transformar o treino caseiro em uma experiênci
   - Bloqueio de concorrência por categoria e usuário para evitar execuções simultâneas ou duplicações.
   - Flag de migração idempotente (`fithome_migrated_${userId}_${category}`) que impede que exclusões legítimas na nuvem sejam recriadas por snapshots vazios ou reconexões.
 
+### 8. Suporte Multi-Idiomas (i18n: PT, EN, ES)
+- **3 Idiomas Totalmente Suportados**:
+  - 🇧🇷 **Português (Brasil)**: idioma padrão e nativo do projeto.
+  - 🇺🇸 **English (US)**: interface completa em inglês com termos de treino adaptados.
+  - 🇪🇸 **Español**: interface completa em espanhol para atletas hispanofalantes.
+- **Seletor de Idioma Rápido (`LanguageSelector`)**:
+  - Dropdown elegante no cabeçalho com exibição de bandeiras e seleção com 1 clique.
+  - Detecção automática do idioma do navegador (`navigator.language`) e persistência imediata no `localStorage` (`fithome_language`).
+  - Sincronização automática do atributo `<html lang="...">` para acessibilidade e leitores de tela.
+- **Síntese de Voz Adaptativa no Temporizador**:
+  - O alerta por voz nativo (`speechSynthesis`) fala dinamicamente na língua configurada pelo usuário:
+    - *PT:* "Descanso finalizado! Hora de treinar!"
+    - *EN:* "Rest finished! Time to workout!"
+    - *ES:* "¡Descanso terminado! ¡Hora de entrenar!"
+- **Tradução de Conteúdo e Anatomia**:
+  - Nomes de exercícios, grupos musculares (`MUSCLE_LABELS`), acessórios caseiros (`HOME_EQUIPMENT_LABELS`), tipos de séries, meses e dias do calendário traduzidos.
+
 ---
 
 ## Tecnologias Utilizadas
@@ -169,6 +187,7 @@ O **FitHome** foi projetado para transformar o treino caseiro em uma experiênci
 | :--- | :--- | :--- |
 | **Linguagem** | TypeScript | `~7.0.2` |
 | **Framework UI** | React | `^19.0.1` |
+| **Internacionalização (i18n)** | Type-safe Context API (`LanguageContext`) | Nativo |
 | **Build & Bundler** | Vite | `^8.3.0` |
 | **Estilização** | Tailwind CSS | `^4.3.3` (com `@tailwindcss/vite`) |
 | **Ícones** | Lucide React | `^0.546.0` |
@@ -176,7 +195,7 @@ O **FitHome** foi projetado para transformar o treino caseiro em uma experiênci
 | **Animações / Efeitos** | Motion (`motion`) / Canvas-Confetti | `^12.23.24` / `^1.9.4` |
 | **Backend & Nuvem** | Google Firebase (Auth + Cloud Firestore) | `^13.0.0` |
 | **PWA & Cache Offline** | Service Worker + Web App Manifest | Nativo |
-| **Áudio e Síntese de Voz** | Web Audio API + Web Speech API | Nativo |
+| **Áudio e Síntese de Voz** | Web Audio API + Web Speech API (PT/EN/ES) | Nativo |
 | **Testes Automatizados** | Vitest | `^5.0.4` |
 
 ---
@@ -213,6 +232,7 @@ O **FitHome** foi projetado para transformar o treino caseiro em uma experiênci
     │   ├── CustomRoutineModal.tsx     # Criador e editor de rotinas personalizadas
     │   ├── ExerciseLibrary.tsx        # Biblioteca e filtros de exercícios caseiros
     │   ├── GoalModal.tsx              # Modal de configuração de meta de peso, data e altura
+    │   ├── LanguageSelector.tsx       # Seletor de idioma acessível com bandeiras (PT, EN, ES)
     │   ├── MeasurementsFormModal.tsx  # Modal de cadastro de circunferências corporais
     │   ├── PhotoCompareModal.tsx      # Comparador de fotos (lado a lado e slider)
     │   ├── PhotoUploadModal.tsx       # Modal de upload e recorte de foto corporal
@@ -230,6 +250,13 @@ O **FitHome** foi projetado para transformar o treino caseiro em uma experiênci
     │   └── templates.ts               # Templates de rotinas sugeridas
     ├── hooks/                   # React Hooks customizados
     │   └── usePWAInstall.ts           # Hook de detecção de instalação PWA e prompt nativo
+    ├── i18n/                    # Sistema de internacionalização (i18n) tipado
+    │   ├── types.ts                   # Tipos de tradução e idiomas suportados (pt, en, es)
+    │   ├── LanguageContext.tsx        # Contexto React com detecção de idioma e persistência
+    │   └── translations/              # Dicionários de tradução completos
+    │       ├── pt.ts                  # Português (Brasil)
+    │       ├── en.ts                  # English (US)
+    │       └── es.ts                  # Español
     ├── lib/                     # Integrações com serviços externos
     │   ├── firebase.ts                # Inicialização do Firebase Auth e Firestore
     │   └── firestoreService.ts        # Métodos de CRUD e listeners reativos do Firestore
@@ -249,12 +276,13 @@ O **FitHome** foi projetado para transformar o treino caseiro em uma experiênci
         ├── milestonesUtils.ts         # Motor de derivação de marcos e conquistas
         ├── reportUtils.ts             # Geração de relatórios por período
         ├── streakUtils.ts             # Motor de cálculo de sequências consecutivas e matriz mensal
-        └── __tests__/                 # Suíte de testes automatizados com Vitest (60 testes aprovados)
+        └── __tests__/                 # Suíte de testes automatizados com Vitest (63 testes aprovados)
             ├── audioUtils.test.ts     # Testes dos alertas sonoros e de voz (5 testes)
             ├── backupRestore.test.ts  # Testes dos modos Merge/Replace e sincronização (10 testes)
             ├── backupValidator.test.ts# Testes do validador de backups e contratos (10 testes)
             ├── bmiUtils.test.ts       # Testes de cálculo e classificação de IMC (2 testes)
             ├── bodyDateUtils.test.ts  # Testes de parsing e formatação de datas (4 testes)
+            ├── i18n.test.ts           # Testes de integridade de dicionários e síntese multi-idioma (3 testes)
             ├── migrationSync.test.ts  # Testes de migração independente por categoria (11 testes)
             ├── milestonesUtils.test.ts# Testes dos marcos e metas corporais (6 testes)
             ├── reportUtils.test.ts    # Testes de relatórios de período e exportação CSV (6 testes)
@@ -344,7 +372,7 @@ http://localhost:3000
 Todos os comandos abaixo estão configurados e validados no `package.json`:
 
 ### 1. Executar os Testes Automatizados
-Executa a suíte completa de **60 testes unitários** no **Vitest** distribuídos em 9 arquivos de teste:
+Executa a suíte completa de **63 testes unitários** no **Vitest** distribuídos em 10 arquivos de teste:
 ```bash
 npm test
 ```
