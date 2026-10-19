@@ -6,6 +6,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Health check connection endpoint
+    match /test/{docId} {
+      allow get: if true;
+    }
+
     // Helper functions
     function isSignedIn() {
       return request.auth != null;
@@ -53,6 +58,12 @@ service cloud.firestore {
       match /records/{recordId} {
         allow get, list: if isOwner(userId);
         allow create, update, delete: if isOwner(userId) && isValidId(recordId);
+      }
+
+      // Custom routines subcollection
+      match /routines/{routineId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && isValidId(routineId);
       }
     }
   }

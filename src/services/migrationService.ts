@@ -300,6 +300,49 @@ export async function handleCategorySnapshot<T>(
   // Array categories
   const isRemotePopulated = Array.isArray(remoteData) && remoteData.length > 0;
   if (isRemotePopulated) {
+    const isMigrated = hasCategoryMigrated(userId, category, storage);
+    if (!isMigrated) {
+      // Check if there are local guest items to merge into remote
+      const keys = GUEST_STORAGE_KEYS[category];
+      const rawData = storage.getItem(keys.primary) || storage.getItem(keys.fallback);
+      let guestItems: { id?: string; exerciseId?: string }[] = [];
+      if (rawData) {
+        try {
+          const parsed = JSON.parse(rawData);
+          if (Array.isArray(parsed)) guestItems = parsed;
+        } catch {
+          // ignore
+        }
+      }
+
+      if (guestItems.length > 0) {
+        const remoteIds = new Set((remoteData as { id?: string; exerciseId?: string }[]).map(r => r.id || r.exerciseId));
+        const missingLocal = guestItems.filter(g => g && !remoteIds.has(g.id || g.exerciseId));
+
+        if (missingLocal.length > 0) {
+          // Upload missing local items to Firestore
+          if (category === 'workouts') {
+            const save = deps.saveWorkout || saveUserWorkoutToFirestore;
+            missingLocal.forEach(item => save(userId, item as WorkoutSession).catch(console.error));
+          } else if (category === 'weights') {
+            const save = deps.saveWeight || saveUserWeightToFirestore;
+            missingLocal.forEach(item => save(userId, item as WeightEntry).catch(console.error));
+          } else if (category === 'measurements') {
+            const save = deps.saveMeasurement || saveUserMeasurementToFirestore;
+            missingLocal.forEach(item => save(userId, item as MeasurementEntry).catch(console.error));
+          } else if (category === 'records') {
+            const save = deps.saveRecord || saveUserRecordToFirestore;
+            missingLocal.forEach(item => save(userId, item as PersonalRecord).catch(console.error));
+          }
+
+          const combined = deduplicateEntries([...(remoteData as { id?: string; exerciseId?: string }[]), ...missingLocal]);
+          onData(combined as unknown as T);
+          markCategoryMigrated(userId, category, storage);
+          return;
+        }
+      }
+    }
+
     onData(remoteData);
     markCategoryMigrated(userId, category, storage);
     return;

@@ -17,7 +17,7 @@ import { ExerciseLibrary } from './components/ExerciseLibrary';
 import { WorkoutRoutines } from './components/WorkoutRoutines';
 import { WorkoutHistory } from './components/WorkoutHistory';
 import { ActiveWorkoutModal } from './components/ActiveWorkoutModal';
-import { auth, loginWithGoogle, logoutUser } from './lib/firebase';
+import { auth, loginWithGoogle, logoutUser, checkRedirectAuth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   syncUserProfile,
@@ -34,11 +34,17 @@ import {
   saveUserGoalToFirestore,
   subscribeUserRecords,
   saveUserRecordToFirestore,
-  deleteUserRecordFromFirestore
+  deleteUserRecordFromFirestore,
+  subscribeUserRoutines,
+  saveUserRoutineToFirestore,
+  deleteUserRoutineFromFirestore
 } from './lib/firestoreService';
 import { validateFitHomeBackup, FitHomeBackup } from './utils/backupValidator';
 import { RestoreConfirmModal } from './components/RestoreConfirmModal';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { PWAInstallModal } from './components/PWAInstallModal';
+import { CloudSyncModal } from './components/CloudSyncModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import {
   handleCategorySnapshot,
   syncRestoredBackupToFirestore
@@ -60,7 +66,8 @@ import {
   LogOut,
   LogIn,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Smartphone
 } from 'lucide-react';
 import {
   hasCategoryMigrated,
@@ -98,6 +105,8 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [pendingRestoreBackup, setPendingRestoreBackup] = useState<FitHomeBackup | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
 
   // Reference to hold current user ID across callbacks
   const currentUserIdRef = useRef<string | null>(null);
@@ -205,6 +214,18 @@ export default function App() {
   useEffect(() => {
     let unsubs: (() => void)[] = [];
 
+    // Check if user just returned from mobile redirect authentication
+    checkRedirectAuth()
+      .then(res => {
+        if (res?.user) {
+          setSyncToast('Conectado via Google com sucesso! Dados sincronizados na nuvem.');
+          setTimeout(() => setSyncToast(null), 4000);
+        }
+      })
+      .catch(err => {
+        console.warn('Redirect auth check warning:', err);
+      });
+
     const unsubscribeAuth = onAuthStateChanged(auth, async currentUser => {
       currentUserIdRef.current = currentUser ? currentUser.uid : null;
       setUser(currentUser);
@@ -273,6 +294,14 @@ export default function App() {
           handleCategorySnapshot(currentUser.uid, 'records', remoteRecords, setPersonalRecords);
         });
         unsubs.push(unsubRecords);
+
+        // 6. Subscribe to live custom routines
+        const unsubRoutines = subscribeUserRoutines(currentUser.uid, remoteRoutines => {
+          if (remoteRoutines && remoteRoutines.length > 0) {
+            setCustomRoutines(remoteRoutines);
+          }
+        });
+        unsubs.push(unsubRoutines);
       } else {
         // When logged out, reset memory state to guest cache
         setSessions(loadInitial('user_sessions', []));
@@ -524,6 +553,11 @@ export default function App() {
       }
       return [routine, ...prev];
     });
+
+    if (user) {
+      saveUserRoutineToFirestore(user.uid, routine);
+    }
+
     setSyncToast(
       language === 'en'
         ? 'Custom routine saved!'
@@ -536,6 +570,11 @@ export default function App() {
 
   const handleDeleteCustomRoutine = (routineId: string) => {
     setCustomRoutines(prev => prev.filter(r => r.id !== routineId));
+
+    if (user) {
+      deleteUserRoutineFromFirestore(user.uid, routineId);
+    }
+
     setSyncToast(
       language === 'en'
         ? 'Custom routine removed.'
@@ -846,57 +885,64 @@ export default function App() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
             ) : user ? (
-              <div className="flex items-center gap-2 pl-2 pr-1.5 py-1 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-300">
-                <div className="flex items-center gap-1.5">
-                  <div className="relative">
-                    {user.photoURL ? (
-                      <img
-                        src={user.photoURL}
-                        alt={user.displayName || 'Avatar'}
-                        className="w-5 h-5 rounded-full object-cover border border-emerald-500/50"
-                      />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">
-                        {(user.displayName || user.email || 'U')[0].toUpperCase()}
-                      </div>
-                    )}
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950" />
-                  </div>
-                  <span className="hidden xl:inline text-xs text-slate-300 max-w-[100px] truncate">
-                    {user.displayName?.split(' ')[0] || 'Atleta'}
-                  </span>
-                  <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                    <Cloud className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{t.common.cloudActive}</span>
-                  </div>
+              <button
+                type="button"
+                onClick={() => setShowSyncModal(true)}
+                className="flex items-center gap-1.5 pl-2 pr-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-emerald-500/30 rounded-xl text-xs text-slate-300 transition-all shadow-sm active:scale-95 cursor-pointer"
+                title="Gerenciar sincronização na nuvem"
+              >
+                <div className="relative">
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName || 'Avatar'}
+                      className="w-5 h-5 rounded-full object-cover border border-emerald-500/50"
+                    />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">
+                      {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950 animate-pulse" />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  title={t.common.disconnectCloud}
-                  className="p-1 hover:text-rose-400 text-slate-500 rounded-md transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                <span className="hidden xl:inline text-xs text-slate-300 max-w-[90px] truncate">
+                  {user.displayName?.split(' ')[0] || 'Atleta'}
+                </span>
+                <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t.common.cloudActive}</span>
+                </div>
+              </button>
             ) : (
               <button
                 type="button"
-                onClick={handleLogin}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition-all shadow-sm active:scale-95"
-                title="Sincronizar seus dados na nuvem com Firebase"
+                onClick={() => setShowSyncModal(true)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                title="Conectar com o Google para sincronizar entre computador e celular"
               >
-                <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">{t.common.connectCloud}</span>
-                <span className="sm:hidden">{t.common.start}</span>
+                <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Sincronizar Nuvem</span>
+                <span className="sm:hidden font-bold">Sincronizar</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
               </button>
             )}
+
+            {/* PWA Mobile / Install Modal Button */}
+            <button
+              type="button"
+              onClick={() => setShowInstallModal(true)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+              title={language === 'en' ? 'Install on Mobile (PWA)' : language === 'es' ? 'Instalar en el Móvil (PWA)' : 'Instalar no Celular (PWA)'}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">{language === 'en' ? 'Install App' : language === 'es' ? 'Instalar App' : 'Instalar no Celular'}</span>
+            </button>
 
             {/* Primary Action Button */}
             <button
               type="button"
               onClick={handleStartCustomWorkout}
-              className="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5"
+              className="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span className="hidden sm:inline">{t.common.startWorkout}</span>
@@ -908,6 +954,32 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12">
+        {/* Sync guidance banner for unauthenticated users */}
+        {!user && (
+          <div className="mb-6 p-3.5 sm:p-4 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900/90 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                <Cloud className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-slate-200">
+                  Sincronização entre Web e Celular
+                </p>
+                <p className="text-[11px] sm:text-xs text-slate-400 leading-snug">
+                  Conecte a mesma conta Google no PC e no celular para ver seus treinos e evolução em tempo real.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSyncModal(true)}
+              className="w-full sm:w-auto px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <LogIn className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Conectar e Sincronizar</span>
+            </button>
+          </div>
+        )}
         {activeTab === 'progresso' && (
           <WeeklyProgress
             sessions={sessions}
@@ -958,8 +1030,8 @@ export default function App() {
         )}
       </main>
 
-      {/* Mobile Fixed Bottom Navigation (5 items) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 grid grid-cols-5 items-center h-16 px-1">
+      {/* Mobile Fixed Bottom Navigation (5 items) with iPhone Safe Area padding */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 grid grid-cols-5 items-center h-16 pb-[env(safe-area-inset-bottom,0px)] px-1">
         <button
           type="button"
           onClick={() => setActiveTab('progresso')}
@@ -1016,6 +1088,15 @@ export default function App() {
         </button>
       </div>
 
+      {/* Offline Connectivity Toast Indicator */}
+      <OfflineIndicator />
+
+      {/* PWA Full Installation & QR Code Guide Modal */}
+      <PWAInstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+      />
+
       {/* Active Workout Logger Modal */}
       {isWorkoutActive && (
         <ActiveWorkoutModal
@@ -1036,6 +1117,20 @@ export default function App() {
           isRestoring={isRestoring}
         />
       )}
+
+      {/* Cloud Sync Status & Multi-Device Manager Modal */}
+      <CloudSyncModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+        user={user}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+        sessions={sessions}
+        bodyWeights={bodyWeights}
+        bodyMeasurements={bodyMeasurements}
+        bodyGoal={bodyGoal}
+        personalRecords={personalRecords}
+      />
     </div>
   );
 }

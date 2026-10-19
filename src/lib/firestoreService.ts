@@ -8,8 +8,8 @@ import {
   orderBy
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
-import { db, handleFirestoreError, OperationType } from './firebase';
-import { WorkoutSession, PersonalRecord } from '../types/workout';
+import { db, handleFirestoreError, OperationType, cleanForFirestore } from './firebase';
+import { WorkoutSession, PersonalRecord, RoutineTemplate } from '../types/workout';
 import { WeightEntry, MeasurementEntry, BodyGoal } from '../types/bodyEvolution';
 
 // User Profile
@@ -18,13 +18,13 @@ export async function syncUserProfile(user: User) {
   try {
     await setDoc(
       doc(db, path),
-      {
+      cleanForFirestore({
         id: user.uid,
         email: user.email || '',
         displayName: user.displayName || 'Atleta FitHome',
         photoURL: user.photoURL || '',
         updatedAt: new Date().toISOString()
-      },
+      }),
       { merge: true }
     );
   } catch (error) {
@@ -64,7 +64,11 @@ export function subscribeUserWorkouts(
 export async function saveUserWorkoutToFirestore(userId: string, workout: WorkoutSession) {
   const path = `users/${userId}/workouts/${workout.id}`;
   try {
-    await setDoc(doc(db, path), workout);
+    const cleaned = cleanForFirestore({
+      ...workout,
+      userId
+    });
+    await setDoc(doc(db, path), cleaned);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -111,7 +115,11 @@ export function subscribeUserWeights(
 export async function saveUserWeightToFirestore(userId: string, weight: WeightEntry) {
   const path = `users/${userId}/weights/${weight.id}`;
   try {
-    await setDoc(doc(db, path), weight);
+    const cleaned = cleanForFirestore({
+      ...weight,
+      userId
+    });
+    await setDoc(doc(db, path), cleaned);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -158,7 +166,11 @@ export function subscribeUserMeasurements(
 export async function saveUserMeasurementToFirestore(userId: string, measurement: MeasurementEntry) {
   const path = `users/${userId}/measurements/${measurement.id}`;
   try {
-    await setDoc(doc(db, path), measurement);
+    const cleaned = cleanForFirestore({
+      ...measurement,
+      userId
+    });
+    await setDoc(doc(db, path), cleaned);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -202,7 +214,11 @@ export function subscribeUserGoal(
 export async function saveUserGoalToFirestore(userId: string, goal: BodyGoal) {
   const path = `users/${userId}/goals/current`;
   try {
-    await setDoc(doc(db, path), goal);
+    const cleaned = cleanForFirestore({
+      ...goal,
+      userId
+    });
+    await setDoc(doc(db, path), cleaned);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -248,7 +264,11 @@ export function subscribeUserRecords(
 export async function saveUserRecordToFirestore(userId: string, record: PersonalRecord) {
   const path = `users/${userId}/records/${record.exerciseId}`;
   try {
-    await setDoc(doc(db, path), record);
+    const cleaned = cleanForFirestore({
+      ...record,
+      userId
+    });
+    await setDoc(doc(db, path), cleaned);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -263,35 +283,128 @@ export async function deleteUserRecordFromFirestore(userId: string, exerciseId: 
   }
 }
 
-// Bulk sync local cache to Firestore upon login if user wishes
+// Sync Custom Routines
+export function subscribeUserRoutines(
+  userId: string,
+  onData: (routines: RoutineTemplate[]) => void,
+  onError?: (err: unknown) => void
+) {
+  const collectionPath = `users/${userId}/routines`;
+  try {
+    return onSnapshot(
+      collection(db, collectionPath),
+      snapshot => {
+        const list: RoutineTemplate[] = [];
+        snapshot.forEach(docSnap => {
+          list.push(docSnap.data() as RoutineTemplate);
+        });
+        onData(list);
+      },
+      error => {
+        if (onError) onError(error);
+        handleFirestoreError(error, OperationType.GET, collectionPath);
+      }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, collectionPath);
+    return () => {};
+  }
+}
+
+export async function saveUserRoutineToFirestore(userId: string, routine: RoutineTemplate) {
+  const path = `users/${userId}/routines/${routine.id}`;
+  try {
+    const cleaned = cleanForFirestore({
+      ...routine,
+      userId
+    });
+    await setDoc(doc(db, path), cleaned);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteUserRoutineFromFirestore(userId: string, routineId: string) {
+  const path = `users/${userId}/routines/${routineId}`;
+  try {
+    await deleteDoc(doc(db, path));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// Bulk sync local cache to Firestore upon login or manual sync button
 export async function uploadLocalDataToFirestore(
   userId: string,
   localData: {
-    sessions: WorkoutSession[];
-    weights: WeightEntry[];
-    measurements: MeasurementEntry[];
-    goal: BodyGoal;
-    personalRecords: PersonalRecord[];
+    sessions?: WorkoutSession[];
+    weights?: WeightEntry[];
+    measurements?: MeasurementEntry[];
+    goal?: BodyGoal;
+    personalRecords?: PersonalRecord[];
+    customRoutines?: RoutineTemplate[];
   }
-) {
+): Promise<{ count: number; errors: string[] }> {
   const promises: Promise<void>[] = [];
+  const errors: string[] = [];
+  let count = 0;
 
-  for (const s of localData.sessions) {
-    promises.push(saveUserWorkoutToFirestore(userId, s));
+  if (localData.sessions) {
+    for (const s of localData.sessions) {
+      if (s && s.id) {
+        count++;
+        promises.push(saveUserWorkoutToFirestore(userId, s));
+      }
+    }
   }
-  for (const w of localData.weights) {
-    promises.push(saveUserWeightToFirestore(userId, w));
+
+  if (localData.weights) {
+    for (const w of localData.weights) {
+      if (w && w.id) {
+        count++;
+        promises.push(saveUserWeightToFirestore(userId, w));
+      }
+    }
   }
-  for (const m of localData.measurements) {
-    promises.push(saveUserMeasurementToFirestore(userId, m));
+
+  if (localData.measurements) {
+    for (const m of localData.measurements) {
+      if (m && m.id) {
+        count++;
+        promises.push(saveUserMeasurementToFirestore(userId, m));
+      }
+    }
   }
-  if (localData.goal && (localData.goal.targetWeightKg || localData.goal.customInitialWeightKg)) {
+
+  if (localData.goal && (localData.goal.targetWeightKg !== undefined || localData.goal.customInitialWeightKg !== undefined)) {
+    count++;
     promises.push(saveUserGoalToFirestore(userId, localData.goal));
   }
-  for (const r of localData.personalRecords) {
-    promises.push(saveUserRecordToFirestore(userId, r));
+
+  if (localData.personalRecords) {
+    for (const r of localData.personalRecords) {
+      if (r && r.exerciseId) {
+        count++;
+        promises.push(saveUserRecordToFirestore(userId, r));
+      }
+    }
   }
 
-  await Promise.allSettled(promises);
-}
+  if (localData.customRoutines) {
+    for (const cr of localData.customRoutines) {
+      if (cr && cr.id) {
+        count++;
+        promises.push(saveUserRoutineToFirestore(userId, cr));
+      }
+    }
+  }
 
+  const results = await Promise.allSettled(promises);
+  results.forEach(res => {
+    if (res.status === 'rejected') {
+      errors.push(String(res.reason));
+    }
+  });
+
+  return { count, errors };
+}

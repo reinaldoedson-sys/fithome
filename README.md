@@ -140,13 +140,18 @@ O **FitHome** foi projetado para transformar o treino caseiro em uma experiênci
 - **Proteção de Quota de Armazenamento**:
   - Tratamento resiliente de `QuotaExceededError` no `localStorage` (especialmente para fotos em Base64), evitando corrupção de outros dados.
 
-### 6. Progressive Web App (PWA) e Modo Offline
-- **Instalabilidade Nativa (PWA)**:
-  - Suporte completo ao manifesto de aplicativo web (`public/manifest.webmanifest`) com modos de exibição `standalone`, safe-zones maskable e tema escuro esmeralda (`#022c22`).
-  - **Instalação no Android e Desktop**: aciona o prompt nativo do navegador via hook `usePWAInstall` e banner `PWAInstallBanner`.
-  - **Instalação no iOS (Safari)**: guia passo a passo interativo que orienta o usuário a tocar no ícone "Compartilhar" e selecionar "Adicionar à Tela de Início".
+### 6. Progressive Web App (PWA) e Instalação Móvel Descomplicada
+- **Instalabilidade Nativa e Experiência Mobile Completa**:
+  - Configuração moderna com `vite-plugin-pwa` e auto-atualização de service worker (`virtual:pwa-register`).
+  - Suporte completo ao manifesto de aplicativo web (`public/manifest.webmanifest`) com exibição `standalone`, orientação `portrait-primary`, safe-zones maskable e tema escuro esmeralda (`#020617`).
+  - Barra de navegação inferior mobile (5 abas principais) com suporte a safe areas para iPhones (`env(safe-area-inset-bottom)`).
+  - **Instalação Rápida no Android e Desktop**: aciona o prompt nativo do navegador via hook `usePWAInstall` com 1 toque.
+  - **Instalação no iPhone & iPad (iOS Safari)**: guia passo a passo ilustrado com ícones para "Compartilhar" e "Adicionar à Tela de Início".
+  - **Acesso Instantâneo via QR Code para Computador**: quando aberto em computadores ou notebooks, o modal gera um QR Code dinâmico para o usuário abrir diretamente no celular apontando a câmera.
+  - **Botão Permanente no Cabeçalho & Banner de Topo**: permite abrir o modal de instalação a qualquer momento com abas para Android, iOS e QR Code.
 - **Estratégia de Cache e Resiliência Offline**:
-  - Service Worker dedicado (`public/sw.js`) que realiza o pré-carregamento dos recursos essenciais da aplicação e serve as páginas mesmo sem conexão com a internet.
+  - Service Worker com pré-carregamento dos recursos essenciais da aplicação, permitindo abrir e treinar mesmo sem internet.
+  - **Indicador Visual Offline (`OfflineIndicator`)**: alerta suave no rodapé quando a conexão cai, tranquilizando o atleta de que os treinos e pesagens continuam funcionando normalmente e gravando no cache local.
   - Cache prioritário para ícones, fontes e manifesto com fallback de rede para rotas de navegação.
 
 ### 7. Autenticação e Sincronização em Nuvem

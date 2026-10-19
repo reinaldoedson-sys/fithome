@@ -90,6 +90,19 @@
         "achievedAt": { "type": "string" }
       },
       "required": ["id", "userId", "exerciseId", "maxScore", "metricLabel"]
+    },
+    "RoutineTemplate": {
+      "title": "RoutineTemplate",
+      "description": "Rotinas personalizadas de treino do usuário",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "exercises": { "type": "array" }
+      },
+      "required": ["id", "name", "exercises"]
     }
   },
   "firestore": {
@@ -116,6 +129,10 @@
     "/users/{userId}/records/{recordId}": {
       "schema": "PersonalRecord",
       "description": "Recordes pessoais do usuário"
+    },
+    "/users/{userId}/routines/{routineId}": {
+      "schema": "RoutineTemplate",
+      "description": "Rotinas de treino personalizadas do usuário"
     }
   }
 }

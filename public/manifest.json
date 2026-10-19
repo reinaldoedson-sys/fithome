@@ -1,0 +1,57 @@
+{
+  "id": "/",
+  "name": "FitHome - Treino em Casa & Evolução",
+  "short_name": "FitHome",
+  "description": "Aplicativo de treinos em casa com peso corporal e itens domésticos, mapa muscular interativo, registro de séries e acompanhamento de evolução física.",
+  "start_url": "/",
+  "scope": "/",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "lang": "pt-BR",
+  "categories": ["fitness", "health", "lifestyle"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Iniciar Treino",
+      "short_name": "Treinar",
+      "description": "Iniciar uma sessão ativa de treino",
+      "url": "/",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Evolução Corporal",
+      "short_name": "Evolução",
+      "description": "Acessar pesagens, medidas e fotos",
+      "url": "/?tab=evolution",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
