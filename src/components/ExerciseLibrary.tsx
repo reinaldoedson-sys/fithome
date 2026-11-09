@@ -13,15 +13,20 @@ import {
   Play,
   VolumeX,
   Clock,
-  Repeat
+  Repeat,
+  Activity,
+  Sliders
 } from 'lucide-react';
+import { SquatAnimationModal } from './SquatAnimationModal';
 
 interface ExerciseLibraryProps {
   onStartWithExercise: (exercise: Exercise) => void;
+  onOpenSquatAnimation?: () => void;
 }
 
 export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
-  onStartWithExercise
+  onStartWithExercise,
+  onOpenSquatAnimation
 }) => {
   const { language, t } = useLanguage();
   const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[]>([]);
@@ -30,6 +35,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExerciseModal, setSelectedExerciseModal] = useState<Exercise | null>(null);
   const [showBodyMap, setShowBodyMap] = useState(true);
+  const [showSquatModal, setShowSquatModal] = useState(false);
 
   const handleToggleMuscle = (muscle: MuscleGroup) => {
     setSelectedMuscles(prev =>
@@ -85,14 +91,28 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowBodyMap(v => !v)}
-          className="self-start sm:self-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-2 whitespace-nowrap"
-        >
-          <Filter className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{showBodyMap ? t.exercises.hideMap : t.exercises.showMap}</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              if (onOpenSquatAnimation) onOpenSquatAnimation();
+              else setShowSquatModal(true);
+            }}
+            className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-semibold rounded-xl border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+          >
+            <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Biomecânica do Agachamento (2D)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowBodyMap(v => !v)}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          >
+            <Filter className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{showBodyMap ? t.exercises.hideMap : t.exercises.showMap}</span>
+          </button>
+        </div>
       </div>
 
       {/* Anatomical Body Map Component */}
@@ -270,14 +290,31 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedExerciseModal(exercise)}
-                      className="text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
-                    >
-                      <Info className="w-3.5 h-3.5" />
-                      <span>{language === 'en' ? 'How to do' : language === 'es' ? 'Cómo hacer' : 'Como Fazer'}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedExerciseModal(exercise)}
+                        className="text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                        <span>{language === 'en' ? 'How to do' : language === 'es' ? 'Cómo hacer' : 'Como Fazer'}</span>
+                      </button>
+
+                      {exercise.id.includes('squat') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onOpenSquatAnimation) onOpenSquatAnimation();
+                            else setShowSquatModal(true);
+                          }}
+                          title="Ver animação biomecânica 2D do agachamento"
+                          className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Activity className="w-3 h-3" />
+                          <span>Animação 2D</span>
+                        </button>
+                      )}
+                    </div>
 
                     <button
                       type="button"
@@ -383,6 +420,23 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
               </div>
             )}
 
+            {/* Biomechanics 2D Animation Shortcut for Squats */}
+            {selectedExerciseModal.id.includes('squat') && (
+              <div className="py-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenSquatAnimation) onOpenSquatAnimation();
+                    else setShowSquatModal(true);
+                  }}
+                  className="w-full py-2.5 px-3.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                >
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  <span>Ver Animação Biomecânica do Agachamento (Canvas 2D)</span>
+                </button>
+              </div>
+            )}
+
             {/* Modal Bottom Actions */}
             <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
               <button
@@ -408,6 +462,12 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           </div>
         </div>
       )}
+
+      {/* 2D Canvas Squat Animation Modal */}
+      <SquatAnimationModal
+        isOpen={showSquatModal}
+        onClose={() => setShowSquatModal(false)}
+      />
     </div>
   );
 };

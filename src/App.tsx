@@ -44,6 +44,7 @@ import { RestoreConfirmModal } from './components/RestoreConfirmModal';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { PWAInstallModal } from './components/PWAInstallModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
+import { SquatAnimationModal } from './components/SquatAnimationModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import {
   handleCategorySnapshot,
@@ -67,8 +68,11 @@ import {
   LogIn,
   Loader2,
   AlertCircle,
-  Smartphone
+  Smartphone,
+  Menu,
+  PanelLeft
 } from 'lucide-react';
+import { AppSidebar, NavTab } from './components/AppSidebar';
 import {
   hasCategoryMigrated,
   markCategoryMigrated
@@ -94,9 +98,23 @@ function loadInitial<T>(key: string, fallback: T): T {
 
 export default function App() {
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<
-    'progresso' | 'evolucao' | 'exercicios' | 'rotinas' | 'historico'
-  >('progresso');
+  const [activeTab, setActiveTab] = useState<NavTab>('progresso');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('fithome_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('fithome_sidebar_collapsed', String(isSidebarCollapsed));
+    } catch {
+      // ignore
+    }
+  }, [isSidebarCollapsed]);
 
   // Firebase Auth State
   const [user, setUser] = useState<User | null>(null);
@@ -107,6 +125,7 @@ export default function App() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showSquatAnimationModal, setShowSquatAnimationModal] = useState(false);
 
   // Reference to hold current user ID across callbacks
   const currentUserIdRef = useRef<string | null>(null);
@@ -778,314 +797,246 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Notification Toasts */}
-      {syncToast && (
-        <div className="fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 text-xs sm:text-sm rounded-xl shadow-xl backdrop-blur-md animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{syncToast}</span>
-        </div>
-      )}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-row font-sans">
+      {/* Expandable / Collapsible Sidebar (Desktop + Mobile Drawer) */}
+      <AppSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        setIsMobileOpen={setIsMobileSidebarOpen}
+        sessionsCount={sessions.length}
+        onStartWorkout={handleStartCustomWorkout}
+        onOpenSyncModal={() => setShowSyncModal(true)}
+        onOpenInstallModal={() => setShowInstallModal(true)}
+        onOpenSquatAnimation={() => setShowSquatAnimationModal(true)}
+        user={user}
+        isAuthLoading={isAuthLoading}
+      />
 
-      {authError && (
-        <div className="fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-rose-950/90 border border-rose-500/40 text-rose-200 text-xs sm:text-sm rounded-xl shadow-xl backdrop-blur-md animate-fade-in">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>{authError}</span>
-        </div>
-      )}
-
-      {/* In-App PWA Installation Prompt / Banner */}
-      <PWAInstallBanner />
-
-      {/* Top Bar Navigation (3 Zones) */}
-      <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 sm:gap-6">
-          {/* Zone 1: Wordmark */}
-          <div className="flex items-center gap-2.5 whitespace-nowrap shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-              <Home className="w-4 h-4 stroke-[2.5]" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-extrabold tracking-tight text-slate-100 font-display leading-tight">
-                FitHome
-              </span>
-              <span className="text-[10px] text-slate-500 hidden sm:inline -mt-0.5">
-                {language === 'en' ? 'Home Workouts & Body Evolution' : language === 'es' ? 'Entrenamientos en Casa y Evolución' : 'Treinos em Casa & Evolução'}
-              </span>
-            </div>
+      {/* Main Content Column */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Top Notification Toasts */}
+        {syncToast && (
+          <div className="fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 text-xs sm:text-sm rounded-xl shadow-xl backdrop-blur-md animate-fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{syncToast}</span>
           </div>
+        )}
 
-          {/* Zone 2: Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
-            <button
-              type="button"
-              onClick={() => setActiveTab('progresso')}
-              className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                activeTab === 'progresso'
-                  ? 'text-emerald-400 font-semibold border-b-2 border-emerald-400'
-                  : ''
-              }`}
-            >
-              {t.nav.progress}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('evolucao')}
-              className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                activeTab === 'evolucao'
-                  ? 'text-emerald-400 font-semibold border-b-2 border-emerald-400'
-                  : ''
-              }`}
-            >
-              {t.nav.evolution}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('exercicios')}
-              className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                activeTab === 'exercicios'
-                  ? 'text-emerald-400 font-semibold border-b-2 border-emerald-400'
-                  : ''
-              }`}
-            >
-              {t.nav.exercises}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('rotinas')}
-              className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                activeTab === 'rotinas'
-                  ? 'text-emerald-400 font-semibold border-b-2 border-emerald-400'
-                  : ''
-              }`}
-            >
-              {t.nav.routines}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('historico')}
-              className={`hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                activeTab === 'historico'
-                  ? 'text-emerald-400 font-semibold border-b-2 border-emerald-400'
-                  : ''
-              }`}
-            >
-              {t.nav.historyCount(sessions.length)}
-            </button>
-          </nav>
+        {authError && (
+          <div className="fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-rose-950/90 border border-rose-500/40 text-rose-200 text-xs sm:text-sm rounded-xl shadow-xl backdrop-blur-md animate-fade-in">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{authError}</span>
+          </div>
+        )}
 
-          {/* Zone 3: Language Selector + Cloud Sync + Primary CTA */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Language Selector */}
-            <LanguageSelector />
+        {/* In-App PWA Installation Prompt / Banner */}
+        <PWAInstallBanner />
 
-            {/* Firebase Auth / Cloud Status */}
-            {isAuthLoading ? (
-              <div className="p-2 text-slate-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </div>
-            ) : user ? (
+        {/* Top Bar Header with section title, quick actions & mobile menu trigger */}
+        <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-6">
+            {/* Zone 1: Mobile Hamburger / Expand Toggle + Active Tab Title */}
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Mobile Drawer Open Button */}
               <button
                 type="button"
-                onClick={() => setShowSyncModal(true)}
-                className="flex items-center gap-1.5 pl-2 pr-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-emerald-500/30 rounded-xl text-xs text-slate-300 transition-all shadow-sm active:scale-95 cursor-pointer"
-                title="Gerenciar sincronização na nuvem"
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 active:scale-95 transition-all cursor-pointer shrink-0"
+                aria-label="Abrir menu de navegação"
               >
-                <div className="relative">
-                  {user.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || 'Avatar'}
-                      className="w-5 h-5 rounded-full object-cover border border-emerald-500/50"
-                    />
-                  ) : (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">
-                      {(user.displayName || user.email || 'U')[0].toUpperCase()}
-                    </div>
-                  )}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950 animate-pulse" />
-                </div>
-                <span className="hidden xl:inline text-xs text-slate-300 max-w-[90px] truncate">
-                  {user.displayName?.split(' ')[0] || 'Atleta'}
+                <Menu className="w-5 h-5" />
+              </button>
+
+              {/* Desktop Expand Sidebar button when collapsed */}
+              {isSidebarCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarCollapsed(false)}
+                  title="Expandir menu lateral"
+                  className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-100 hover:bg-slate-800 active:scale-95 transition-all cursor-pointer shrink-0"
+                >
+                  <PanelLeft className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Active Tab Header Title */}
+              <div className="flex flex-col min-w-0">
+                <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 font-display leading-tight truncate">
+                  {activeTab === 'progresso' && t.nav.progress}
+                  {activeTab === 'evolucao' && t.nav.evolution}
+                  {activeTab === 'exercicios' && t.nav.exercises}
+                  {activeTab === 'rotinas' && t.nav.routines}
+                  {activeTab === 'historico' && t.nav.historyCount(sessions.length)}
                 </span>
-                <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                  <Cloud className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t.common.cloudActive}</span>
+                <span className="text-[10px] sm:text-xs text-slate-400 hidden sm:inline leading-none truncate">
+                  FitHome • {language === 'en' ? 'Home Workouts & Body Evolution' : language === 'es' ? 'Entrenamientos en Casa y Evolución' : 'Treinos em Casa & Evolução Corporal'}
+                </span>
+              </div>
+            </div>
+
+            {/* Zone 2: Cloud Sync + PWA + Primary Workout Action */}
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+              {/* Language Selector */}
+              <div className="hidden sm:block">
+                <LanguageSelector />
+              </div>
+
+              {/* Firebase Auth / Cloud Status */}
+              {isAuthLoading ? (
+                <div className="p-2 text-slate-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
+              ) : user ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSyncModal(true)}
+                  className="flex items-center gap-1.5 pl-2 pr-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-emerald-500/30 rounded-xl text-xs text-slate-300 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  title="Gerenciar sincronização na nuvem"
+                >
+                  <div className="relative">
+                    {user.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt={user.displayName || 'Avatar'}
+                        className="w-5 h-5 rounded-full object-cover border border-emerald-500/50"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">
+                        {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950 animate-pulse" />
+                  </div>
+                  <span className="hidden xl:inline text-xs text-slate-300 max-w-[90px] truncate">
+                    {user.displayName?.split(' ')[0] || 'Atleta'}
+                  </span>
+                  <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{t.common.cloudActive}</span>
+                  </div>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowSyncModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                  title="Conectar com o Google para sincronizar entre computador e celular"
+                >
+                  <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Sincronizar Nuvem</span>
+                  <span className="sm:hidden font-bold">Nuvem</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                </button>
+              )}
+
+              {/* PWA Mobile / Install Modal Button */}
+              <button
+                type="button"
+                onClick={() => setShowInstallModal(true)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                title={language === 'en' ? 'Install on Mobile (PWA)' : language === 'es' ? 'Instalar en el Móvil (PWA)' : 'Instalar no Celular (PWA)'}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">{language === 'en' ? 'Install App' : language === 'es' ? 'Instalar App' : 'Instalar no Celular'}</span>
               </button>
-            ) : (
+
+              {/* Primary Action Button */}
+              <button
+                type="button"
+                onClick={handleStartCustomWorkout}
+                className="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span className="hidden sm:inline">{t.common.startWorkout}</span>
+                <span className="sm:hidden">{t.common.start}</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 pb-12">
+          {/* Sync guidance banner for unauthenticated users */}
+          {!user && (
+            <div className="mb-6 p-3.5 sm:p-4 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900/90 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Cloud className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-bold text-slate-200">
+                    Sincronização entre Web e Celular
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-slate-400 leading-snug">
+                    Conecte a mesma conta Google no PC e no celular para ver seus treinos e evolução em tempo real.
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowSyncModal(true)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
-                title="Conectar com o Google para sincronizar entre computador e celular"
+                className="w-full sm:w-auto px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 flex items-center justify-center gap-1.5 active:scale-95"
               >
-                <Cloud className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden sm:inline">Sincronizar Nuvem</span>
-                <span className="sm:hidden font-bold">Sincronizar</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <LogIn className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Conectar e Sincronizar</span>
               </button>
-            )}
-
-            {/* PWA Mobile / Install Modal Button */}
-            <button
-              type="button"
-              onClick={() => setShowInstallModal(true)}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
-              title={language === 'en' ? 'Install on Mobile (PWA)' : language === 'es' ? 'Instalar en el Móvil (PWA)' : 'Instalar no Celular (PWA)'}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">{language === 'en' ? 'Install App' : language === 'es' ? 'Instalar App' : 'Instalar no Celular'}</span>
-            </button>
-
-            {/* Primary Action Button */}
-            <button
-              type="button"
-              onClick={handleStartCustomWorkout}
-              className="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">{t.common.startWorkout}</span>
-              <span className="sm:hidden">{t.common.start}</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12">
-        {/* Sync guidance banner for unauthenticated users */}
-        {!user && (
-          <div className="mb-6 p-3.5 sm:p-4 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900/90 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
-                <Cloud className="w-5 h-5 stroke-[2.2]" />
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm font-bold text-slate-200">
-                  Sincronização entre Web e Celular
-                </p>
-                <p className="text-[11px] sm:text-xs text-slate-400 leading-snug">
-                  Conecte a mesma conta Google no PC e no celular para ver seus treinos e evolução em tempo real.
-                </p>
-              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowSyncModal(true)}
-              className="w-full sm:w-auto px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <LogIn className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Conectar e Sincronizar</span>
-            </button>
-          </div>
-        )}
-        {activeTab === 'progresso' && (
-          <WeeklyProgress
-            sessions={sessions}
-            personalRecords={personalRecords}
-            onStartWorkout={handleStartCustomWorkout}
-          />
-        )}
+          )}
+          {activeTab === 'progresso' && (
+            <WeeklyProgress
+              sessions={sessions}
+              personalRecords={personalRecords}
+              onStartWorkout={handleStartCustomWorkout}
+            />
+          )}
 
-        {activeTab === 'evolucao' && (
-          <BodyEvolution
-            weights={bodyWeights}
-            measurements={bodyMeasurements}
-            goal={bodyGoal}
-            photos={bodyPhotos}
-            onSaveWeight={handleSaveWeight}
-            onDeleteWeight={handleDeleteWeight}
-            onSaveMeasurement={handleSaveMeasurement}
-            onDeleteMeasurement={handleDeleteMeasurement}
-            onSaveGoal={handleSaveGoal}
-            onSavePhoto={handleSavePhoto}
-            onDeletePhoto={handleDeletePhoto}
-          />
-        )}
+          {activeTab === 'evolucao' && (
+            <BodyEvolution
+              weights={bodyWeights}
+              measurements={bodyMeasurements}
+              goal={bodyGoal}
+              photos={bodyPhotos}
+              onSaveWeight={handleSaveWeight}
+              onDeleteWeight={handleDeleteWeight}
+              onSaveMeasurement={handleSaveMeasurement}
+              onDeleteMeasurement={handleDeleteMeasurement}
+              onSaveGoal={handleSaveGoal}
+              onSavePhoto={handleSavePhoto}
+              onDeletePhoto={handleDeletePhoto}
+            />
+          )}
 
-        {activeTab === 'exercicios' && (
-          <ExerciseLibrary onStartWithExercise={handleStartWithExercise} />
-        )}
+          {activeTab === 'exercicios' && (
+            <ExerciseLibrary
+              onStartWithExercise={handleStartWithExercise}
+              onOpenSquatAnimation={() => setShowSquatAnimationModal(true)}
+            />
+          )}
 
-        {activeTab === 'rotinas' && (
-          <WorkoutRoutines
-            customRoutines={customRoutines}
-            onStartTemplate={handleStartTemplate}
-            onCustomWorkout={handleStartCustomWorkout}
-            onSaveCustomRoutine={handleSaveCustomRoutine}
-            onDeleteCustomRoutine={handleDeleteCustomRoutine}
-          />
-        )}
+          {activeTab === 'rotinas' && (
+            <WorkoutRoutines
+              customRoutines={customRoutines}
+              onStartTemplate={handleStartTemplate}
+              onCustomWorkout={handleStartCustomWorkout}
+              onSaveCustomRoutine={handleSaveCustomRoutine}
+              onDeleteCustomRoutine={handleDeleteCustomRoutine}
+            />
+          )}
 
-        {activeTab === 'historico' && (
-          <WorkoutHistory
-            sessions={sessions}
-            onRepeatSession={handleRepeatSession}
-            onDeleteSession={handleDeleteSession}
-            onClearHistory={handleClearHistory}
-            onExportData={handleExportData}
-            onImportData={handleImportData}
-          />
-        )}
-      </main>
-
-      {/* Mobile Fixed Bottom Navigation (5 items) with iPhone Safe Area padding */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 grid grid-cols-5 items-center h-16 pb-[env(safe-area-inset-bottom,0px)] px-1">
-        <button
-          type="button"
-          onClick={() => setActiveTab('progresso')}
-          className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-            activeTab === 'progresso' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Home className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.progress.split(' ')[0]}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('evolucao')}
-          className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-            activeTab === 'evolucao' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Scale className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.evolution.split(' ')[0]}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('exercicios')}
-          className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-            activeTab === 'exercicios' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.exercises.split(' ')[0]}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('rotinas')}
-          className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-            activeTab === 'rotinas' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.routines.split(' ')[0]}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('historico')}
-          className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-            activeTab === 'historico' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Calendar className="w-4 h-4" />
-          <span className="text-[9px] font-medium tracking-tight mt-1 truncate">{t.nav.history}</span>
-        </button>
+          {activeTab === 'historico' && (
+            <WorkoutHistory
+              sessions={sessions}
+              onRepeatSession={handleRepeatSession}
+              onDeleteSession={handleDeleteSession}
+              onClearHistory={handleClearHistory}
+              onExportData={handleExportData}
+              onImportData={handleImportData}
+            />
+          )}
+        </main>
       </div>
 
       {/* Offline Connectivity Toast Indicator */}
@@ -1095,6 +1046,12 @@ export default function App() {
       <PWAInstallModal
         isOpen={showInstallModal}
         onClose={() => setShowInstallModal(false)}
+      />
+
+      {/* 2D Canvas Biomechanics Squat Animation Modal */}
+      <SquatAnimationModal
+        isOpen={showSquatAnimationModal}
+        onClose={() => setShowSquatAnimationModal(false)}
       />
 
       {/* Active Workout Logger Modal */}

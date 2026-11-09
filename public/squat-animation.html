@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animação de Agachamento - Boneco de Palitos (Canvas)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 520px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    p.subtitle {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .canvas-container {
+      position: relative;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      max-width: 440px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-top: 16px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      appearance: none;
+      border: none;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:hover {
+      background: #1e293b;
+    }
+    .btn:active {
+      transform: scale(0.97);
+    }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+    .poses-indicator {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      margin-top: 14px;
+    }
+    .pose-badge {
+      flex: 1;
+      text-align: center;
+      padding: 6px 4px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: #f1f5f9;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .pose-badge.active {
+      background: #10b981;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    }
+    .info-footer {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>Agachamento Biomecânico (Vista Lateral)</h1>
+    <p class="subtitle">Animação suave em loop (3s) • 3 Poses-chave com Easing</p>
+
+    <div class="canvas-container">
+      <canvas id="squatCanvas" width="440" height="440"></canvas>
+    </div>
+
+    <!-- Poses Status -->
+    <div class="poses-indicator">
+      <div id="badge1" class="pose-badge">1. Em pé</div>
+      <div id="badge2" class="pose-badge">2. Meio agachado</div>
+      <div id="badge3" class="pose-badge">3. Agachado embaixo</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button id="togglePlayBtn" class="btn">Pausar</button>
+      <button id="toggleJointsBtn" class="btn btn-secondary">Mostrar Juntas</button>
+      <button id="resetBtn" class="btn btn-secondary">Reiniciar</button>
+    </div>
+
+    <div class="info-footer">
+      Ciclo: 1 (Em pé) → 2 (Meio) → 3 (Fundo) → 2 → 1 • Pés fixos no chão
+    </div>
+  </div>
+
+  <script>
+    // Canvas setup
+    const canvas = document.getElementById('squatCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // UI elements
+    const togglePlayBtn = document.getElementById('togglePlayBtn');
+    const toggleJointsBtn = document.getElementById('toggleJointsBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const badge1 = document.getElementById('badge1');
+    const badge2 = document.getElementById('badge2');
+    const badge3 = document.getElementById('badge3');
+
+    let isPlaying = true;
+    let showJoints = true;
+
+    // Fixed anatomical segment lengths (invariable bone lengths)
+    const BONES = {
+      shin: 75,       // Tornozelo até Joelho
+      thigh: 80,      // Joelho até Quadril
+      torso: 90,      // Quadril até Ombro
+      headRadius: 18, // Raio da cabeça
+      neck: 16,       // Ombro até base da cabeça
+      arm: 54,        // Ombro até Cotovelo
+      forearm: 50,    // Cotovelo até Mão
+      footLength: 38  // Tornozelo até ponta do pé
+    };
+
+    // Fixed ground and ankle position
+    const groundY = 360;
+    const anklePos = { x: 195, y: groundY - 8 };
+
+    // Key poses defined by joint angles (in radians)
+    // Positive angles = clockwise / forward lean in right-facing view
+    const POSES = [
+      // Pose 1: Em pé (joelhos e quadril estendidos, braços ao lado do corpo)
+      {
+        shinAngle: 0 * Math.PI / 180,        // canela vertical
+        kneeBend: 4 * Math.PI / 180,         // joelho quase reto
+        torsoAngle: 4 * Math.PI / 180,       // tronco ereto (leve inclinação natural)
+        shoulderAngle: 12 * Math.PI / 180,   // braço para baixo ao lado do corpo
+        elbowBend: 10 * Math.PI / 180        // cotovelo levemente flexionado
+      },
+      // Pose 2: Meio agachado (joelhos dobrados ~60°, braços levantados à frente)
+      {
+        shinAngle: 15 * Math.PI / 180,       // canela inclina para frente
+        kneeBend: 60 * Math.PI / 180,        // flexão do joelho ~60°
+        torsoAngle: 25 * Math.PI / 180,      // tronco inclinado à frente para equilíbrio
+        shoulderAngle: 62 * Math.PI / 180,   // braços subindo à frente
+        elbowBend: 18 * Math.PI / 180        // cotovelo quase estendido
+      },
+      // Pose 3: Agachado embaixo (joelhos ~100°, quadril para trás, tronco inclinado, braços na altura do ombro)
+      {
+        shinAngle: 26 * Math.PI / 180,       // canela avança
+        kneeBend: 100 * Math.PI / 180,       // flexão profunda do joelho ~100°
+        torsoAngle: 36 * Math.PI / 180,      // tronco inclinado firme
+        shoulderAngle: 88 * Math.PI / 180,   // braço estendido horizontal à frente (altura do ombro)
+        elbowBend: 10 * Math.PI / 180        // braço esticado
+      }
+    ];
+
+    // Helper: Linear interpolation
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    // Helper: Smooth Ease-in-out (cosine bell for continuous cycle)
+    // Takes normalized progress p in [0, 1] over 3 seconds:
+    // p = 0.00: Pose 1 (Em pé)
+    // p = 0.25: Pose 2 (Meio descendo)
+    // p = 0.50: Pose 3 (Fundo do agachamento)
+    // p = 0.75: Pose 2 (Meio subindo)
+    // p = 1.00: Pose 1 (De volta em pé)
+    function getInterpolatedAngles(progress) {
+      // Periodic smoothly oscillating parameter u in [0, 1]
+      // using ease-in-out cosine curve
+      const u = (1 - Math.cos(2 * Math.PI * progress)) / 2;
+
+      let currentAngles = {};
+
+      if (u <= 0.5) {
+        // Between Pose 1 and Pose 2
+        const localT = u / 0.5;
+        // Cubic easing for local segment
+        const eased = localT * localT * (3 - 2 * localT);
+        const p1 = POSES[0];
+        const p2 = POSES[1];
+
+        currentAngles = {
+          shinAngle: lerp(p1.shinAngle, p2.shinAngle, eased),
+          kneeBend: lerp(p1.kneeBend, p2.kneeBend, eased),
+          torsoAngle: lerp(p1.torsoAngle, p2.torsoAngle, eased),
+          shoulderAngle: lerp(p1.shoulderAngle, p2.shoulderAngle, eased),
+          elbowBend: lerp(p1.elbowBend, p2.elbowBend, eased),
+          poseProgress: u
+        };
+      } else {
+        // Between Pose 2 and Pose 3
+        const localT = (u - 0.5) / 0.5;
+        const eased = localT * localT * (3 - 2 * localT);
+        const p2 = POSES[1];
+        const p3 = POSES[2];
+
+        currentAngles = {
+          shinAngle: lerp(p2.shinAngle, p3.shinAngle, eased),
+          kneeBend: lerp(p2.kneeBend, p3.kneeBend, eased),
+          torsoAngle: lerp(p2.torsoAngle, p3.torsoAngle, eased),
+          shoulderAngle: lerp(p2.shoulderAngle, p3.shoulderAngle, eased),
+          elbowBend: lerp(p2.elbowBend, p3.elbowBend, eased),
+          poseProgress: u
+        };
+      }
+
+      return currentAngles;
+    }
+
+    // Forward Kinematics: Calculate all joint positions from angles & constant lengths
+    function computeJointPositions(angles) {
+      // 1. Tornozelo (Ankle) - FIXED on the floor
+      const ankle = { x: anklePos.x, y: anklePos.y };
+
+      // 2. Joelho (Knee)
+      // Shin vector: from ankle upwards and angled forward by shinAngle
+      const knee = {
+        x: ankle.x + BONES.shin * Math.sin(angles.shinAngle),
+        y: ankle.y - BONES.shin * Math.cos(angles.shinAngle)
+      };
+
+      // 3. Quadril (Hip)
+      // Thigh vector: bent backwards relative to shin by kneeBend angle
+      const thighAngle = angles.kneeBend - angles.shinAngle;
+      const hip = {
+        x: knee.x - BONES.thigh * Math.sin(thighAngle),
+        y: knee.y - BONES.thigh * Math.cos(thighAngle)
+      };
+
+      // 4. Ombro (Shoulder)
+      // Torso vector: from hip upwards and angled forward by torsoAngle
+      const shoulder = {
+        x: hip.x + BONES.torso * Math.sin(angles.torsoAngle),
+        y: hip.y - BONES.torso * Math.cos(angles.torsoAngle)
+      };
+
+      // 5. Cabeça (Head)
+      const head = {
+        x: shoulder.x + BONES.neck * Math.sin(angles.torsoAngle * 0.8),
+        y: shoulder.y - BONES.neck * Math.cos(angles.torsoAngle * 0.8) - BONES.headRadius + 2
+      };
+
+      // 6. Braço e Cotovelo (Arm & Elbow)
+      // Arm points forward/down by shoulderAngle
+      const elbow = {
+        x: shoulder.x + BONES.arm * Math.sin(angles.shoulderAngle),
+        y: shoulder.y + BONES.arm * Math.cos(angles.shoulderAngle)
+      };
+
+      // 7. Mão (Hand/Wrist)
+      const forearmAngle = angles.shoulderAngle + angles.elbowBend;
+      const hand = {
+        x: elbow.x + BONES.forearm * Math.sin(forearmAngle),
+        y: elbow.y + BONES.forearm * Math.cos(forearmAngle)
+      };
+
+      // 8. Pé no chão (Foot flat on ground)
+      const heel = { x: ankle.x - 14, y: groundY };
+      const toe = { x: ankle.x + BONES.footLength, y: groundY };
+
+      return { ankle, knee, hip, shoulder, head, elbow, hand, heel, toe };
+    }
+
+    // Render loop
+    const CYCLE_DURATION = 3000; // 3 seconds total cycle
+    let startTime = null;
+    let pausedTime = 0;
+    let lastTimestamp = 0;
+
+    function render(timestamp) {
+      if (!startTime) startTime = timestamp;
+      if (!isPlaying) {
+        lastTimestamp = timestamp;
+        requestAnimationFrame(render);
+        return;
+      }
+
+      const elapsed = (timestamp - startTime) % CYCLE_DURATION;
+      const progress = elapsed / CYCLE_DURATION;
+
+      // 1. Calculate joint angles via easing
+      const angles = getInterpolatedAngles(progress);
+
+      // 2. Compute absolute coordinate of all joints
+      const joints = computeJointPositions(angles);
+
+      // 3. Clear canvas (Fundo claro)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw light background grid/clean floor
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Ground line (chão suave e profissional)
+      ctx.beginPath();
+      ctx.moveTo(30, groundY);
+      ctx.lineTo(410, groundY);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Subtle shadow under foot
+      ctx.beginPath();
+      ctx.ellipse(joints.ankle.x + 12, groundY + 4, 38, 5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.08)';
+      ctx.fill();
+
+      // Styling for stick figure: traço grosso e arredondado
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#0f172a'; // Escuro suave / Charcoal
+
+      // --- Desenhar Pé (Fixo no chão) ---
+      ctx.beginPath();
+      ctx.moveTo(joints.heel.x, joints.heel.y - 2);
+      ctx.lineTo(joints.toe.x, joints.toe.y - 2);
+      ctx.stroke();
+
+      // Tornozelo até calcanhar/chão
+      ctx.beginPath();
+      ctx.moveTo(joints.ankle.x, joints.ankle.y);
+      ctx.lineTo(joints.heel.x + 8, joints.heel.y - 2);
+      ctx.stroke();
+
+      // --- Desenhar Perna (Canela: Tornozelo → Joelho) ---
+      ctx.beginPath();
+      ctx.moveTo(joints.ankle.x, joints.ankle.y);
+      ctx.lineTo(joints.knee.x, joints.knee.y);
+      ctx.stroke();
+
+      // --- Desenhar Coxa (Joelho → Quadril) ---
+      ctx.beginPath();
+      ctx.moveTo(joints.knee.x, joints.knee.y);
+      ctx.lineTo(joints.hip.x, joints.hip.y);
+      ctx.stroke();
+
+      // --- Desenhar Tronco (Quadril → Ombro) ---
+      ctx.beginPath();
+      ctx.moveTo(joints.hip.x, joints.hip.y);
+      ctx.lineTo(joints.shoulder.x, joints.shoulder.y);
+      ctx.stroke();
+
+      // --- Desenhar Braço (Ombro → Cotovelo → Mão) ---
+      ctx.beginPath();
+      ctx.moveTo(joints.shoulder.x, joints.shoulder.y);
+      ctx.lineTo(joints.elbow.x, joints.elbow.y);
+      ctx.lineTo(joints.hand.x, joints.hand.y);
+      ctx.stroke();
+
+      // --- Desenhar Cabeça (Círculo preenchido ou com traço espesso) ---
+      ctx.beginPath();
+      ctx.arc(joints.head.x, joints.head.y, BONES.headRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+
+      // --- Desenhar Juntas Visíveis (Ombro, Cotovelo, Quadril, Joelho, Tornozelo) ---
+      if (showJoints) {
+        const jointList = [
+          { p: joints.shoulder, name: 'Ombro' },
+          { p: joints.elbow, name: 'Cotovelo' },
+          { p: joints.hip, name: 'Quadril' },
+          { p: joints.knee, name: 'Joelho' },
+          { p: joints.ankle, name: 'Tornozelo' }
+        ];
+
+        jointList.forEach(j => {
+          ctx.beginPath();
+          ctx.arc(j.p.x, j.p.y, 5, 0, Math.PI * 2);
+          ctx.fillStyle = '#10b981'; // Emerald suave
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+        });
+      }
+
+      // Update badge UI
+      const u = angles.poseProgress;
+      badge1.classList.toggle('active', u < 0.25);
+      badge2.classList.toggle('active', u >= 0.25 && u <= 0.75);
+      badge3.classList.toggle('active', u > 0.75);
+
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+
+    // Event listeners
+    togglePlayBtn.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      togglePlayBtn.textContent = isPlaying ? 'Pausar' : 'Continuar';
+      togglePlayBtn.style.background = isPlaying ? '#0f172a' : '#10b981';
+    });
+
+    toggleJointsBtn.addEventListener('click', () => {
+      showJoints = !showJoints;
+      toggleJointsBtn.textContent = showJoints ? 'Ocultar Juntas' : 'Mostrar Juntas';
+    });
+
+    resetBtn.addEventListener('click', () => {
+      startTime = performance.now();
+    });
+  </script>
+</body>
+</html>
